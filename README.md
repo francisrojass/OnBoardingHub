@@ -39,7 +39,7 @@ Esto garantizará:
 
 ## 👨‍🎓 Sobre este TFG
 
-* 👤 **Autor:** Francisco José Rojas Ramírez
+* 👤 **Autores:** Francisco José Rojas Ramírez & Francisco Redondo Barrera
 * 👨‍🏫 **Tutor:** Juan Antonio Ortega Ramírez
 * 🎓 **Titulación:** Grado en Ingeniería Informática (Tecnologías Informáticas)
 * 🏛️ **Universidad:** Universidad de Sevilla (Escuela Técnica Superior de Ingeniería Informática)
