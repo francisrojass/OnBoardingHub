@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import * as boxController from './box.controller';
+import { verifyToken } from '../../middlewares/verifyToken';
+
+const router = Router();
+
+router.get('/', verifyToken, boxController.getBoxes);
+router.get('/:id', verifyToken, boxController.getBoxById);
+router.post('/', verifyToken, boxController.createBox);
+
+export default router;

@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  avatar    String?
+  role      Role      @default(EMPLOYEE)
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  sandboxes Sandbox[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Company {
+  id           String       @id @default(cuid())
+  name         String
+  users        User[]
+  companyBoxes CompanyBox[]
+}
+
+model Box {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  objectives   String
+  dockerImage  String
+  difficulty   Difficulty   @default(BEGINNER)
+  companyBoxes CompanyBox[]
+  sandboxes    Sandbox[]
+}
+
+model CompanyBox {
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+  box       Box     @relation(fields: [boxId], references: [id])
+  boxId     String
+
+  @@unique([companyId, boxId])
+}
+
+model Sandbox {
+  id          String        @id @default(cuid())
+  user        User          @relation(fields: [userId], references: [id])
+  userId      String
+  box         Box           @relation(fields: [boxId], references: [id])
+  boxId       String
+  containerId String?
+  status      SandboxStatus @default(PENDING)
+  port        Int?
+  createdAt   DateTime      @default(now())
+  stoppedAt   DateTime?
+}
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum SandboxStatus {
+  PENDING
+  RUNNING
+  STOPPED
+  ERROR
+}
