@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react'
 import api from '../services/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 export default function Register(){
@@ -37,6 +37,12 @@ export default function Register(){
         navigate('/login')
       }
     } catch (err:any) { setError(err.response?.data?.message || err.message || 'Error') }
+  }
+
+  // if already authenticated, redirect to dashboard
+  if (auth && auth.token) {
+    // prevent showing register form when already logged
+    return <Navigate to="/dashboard" replace />
   }
 
   return (

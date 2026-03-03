@@ -1,7 +1,10 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useContext } from 'react'
+import { Link, Navigate } from 'react-router-dom'
+import { AuthContext } from '../context/AuthContext'
 
 export default function Welcome(){
+  const auth = useContext(AuthContext)
+  if (auth && auth.token) return <Navigate to="/dashboard" replace />
   return (
     <div className="max-w-3xl mx-auto text-center mt-20">
       <div className="card p-12">

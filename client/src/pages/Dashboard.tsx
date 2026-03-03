@@ -25,26 +25,32 @@ export default function Dashboard(){
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Tus boxes</h2>
-        <Link to="/profile" className="text-sm text-gray-500">Perfil</Link>
+        <h2 className="text-xl font-semibold">Tus Sandboxes</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {data && data.map((b:any) => (
-          <div key={b.id} className="p-4 card">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium">{b.title}</h3>
-                <p className="text-sm text-gray-600">{b.description}</p>
-              </div>
-              <div className="space-y-2 text-right">
-                <Link to={`/boxes/${b.id}`} className="text-sm text-blue-600">Ver</Link>
-                <button onClick={()=> launch.mutate(b.id)} className="px-3 py-1 bg-sky-600 text-white rounded">LAUNCH</button>
+      {(!data || data.length === 0) ? (
+        <div className="empty-box card">
+          <img src="/assets/empty-boxes.png" alt="No boxes" />
+          <div className="hint">Todavía no tienes boxes asignados a tu empresa. Aquí aparecerán los entornos disponibles...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data && data.map((b:any) => (
+            <div key={b.id} className="p-4 card">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-medium">{b.title}</h3>
+                  <p className="text-sm text-gray-600">{b.description}</p>
+                </div>
+                <div className="space-y-2 text-right">
+                  <Link to={`/boxes/${b.id}`} className="text-sm text-blue-600">Ver</Link>
+                  <button onClick={()=> launch.mutate(b.id)} className="px-3 py-1 bg-sky-600 text-white rounded">LAUNCH</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

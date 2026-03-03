@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 export default function Login(){
@@ -11,12 +11,16 @@ export default function Login(){
 
   if (!auth) return null
 
+  if (auth.token) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   const submit = async (e:React.FormEvent) => {
     e.preventDefault()
     setError(null)
     try {
       await auth.login(email, password)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err:any) {
       setError(err.message || 'Error')
     }

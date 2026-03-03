@@ -18,3 +18,15 @@ body {
 }
 
 .card { background: var(--card); border-radius: 12px; box-shadow: 0 6px 18px rgba(15,23,42,0.06); }
+
+/* Small UI helpers */
+.nav-brand { display:flex; align-items:center; gap:10px; margin-left:-20px }
+.nav-brand .logo { height:110px; max-height:110px; width:auto; display:block }
+.nav-brand .title { font-size:1.5rem; font-weight:700; margin-left:8px }
+
+.empty-box { text-align:center; padding:32px; display:flex; flex-direction:column; align-items:center; justify-content:center }
+.empty-box img { max-width:640px; width:100%; height:auto; display:block; margin:0 auto 12px auto; opacity:0.98 }
+.empty-box .hint { margin-top:12px; color:var(--muted) }
+
+/* Welcome/photo helper (if present) */
+.welcome-photo { width:320px; max-width:40%; height:auto; display:block; border-radius:8px; }
