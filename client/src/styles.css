@@ -7,8 +7,10 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: var(--bg);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
 }
 
 .container {
@@ -21,8 +23,23 @@ body {
 
 /* Small UI helpers */
 .nav-brand { display:flex; align-items:center; gap:10px; margin-left:-20px }
-.nav-brand .logo { height:110px; max-height:110px; width:auto; display:block }
-.nav-brand .title { font-size:1.5rem; font-weight:700; margin-left:8px }
+.nav-brand .logo { height:90px; max-height:90px; width:auto; display:block }
+.nav-brand .title { font-size:1.75rem; font-weight:700; margin-left:8px }
+
+/* Navigation actions (links/buttons) */
+.nav-actions { display:flex; gap:12px; align-items:center }
+.nav-actions a, .nav-actions button {
+  font-size:1.125rem;
+  font-weight:600;
+  color: #475569; /* slate-600 */
+  padding:4px 8px;
+}
+.nav-actions button { background:transparent; border:0; cursor:pointer }
+.nav-actions a:hover { color:#0f172a }
+
+/* Logout button specific hover (red tones) */
+.nav-actions button.logout { color: #ef4444 }
+.nav-actions button.logout:hover { color: #dc2626 }
 
 .empty-box { text-align:center; padding:32px; display:flex; flex-direction:column; align-items:center; justify-content:center }
 .empty-box img { max-width:640px; width:100%; height:auto; display:block; margin:0 auto 12px auto; opacity:0.98 }
@@ -30,3 +47,6 @@ body {
 
 /* Welcome/photo helper (if present) */
 .welcome-photo { width:320px; max-width:40%; height:auto; display:block; border-radius:8px; }
+
+/* Page title larger */
+.page-title { font-size:1.75rem; }

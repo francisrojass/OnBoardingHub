@@ -25,7 +25,7 @@ export default function Dashboard(){
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Tus Sandboxes</h2>
+          <h2 className="text-xl font-semibold page-title">Tus Sandboxes</h2>
       </div>
 
       {(!data || data.length === 0) ? (

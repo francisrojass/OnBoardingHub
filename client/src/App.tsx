@@ -15,20 +15,20 @@ export default function App(){
 
   return (
     <div>
-      <header className="p-4 border-b bg-white/60 backdrop-blur sticky top-0 z-10">
+      <header className="py-2 px-4 border-b bg-white/60 backdrop-blur sticky top-0 z-10">
         <nav className="container flex items-center justify-between">
           <div className="nav-brand">
             <img src="/assets/logo.svg" alt="logo" className="logo" />
             <Link to="/" className="title">OnBoardingHub</Link>
           </div>
-          <div className="space-x-3 flex items-center">
+          <div className="space-x-3 flex items-center nav-actions">
             {auth && auth.isAuthenticating ? (
               <div className="text-sm text-gray-500">Comprobando sesión...</div>
             ) : auth && auth.user ? (
               <>
                 <Link to="/dashboard" className="text-sm text-gray-600">Dashboard</Link>
                 <Link to="/profile" className="text-sm text-gray-600">Perfil</Link>
-                <button onClick={auth.logout} className="text-sm text-red-500">Cerrar sesión</button>
+                <button onClick={auth.logout} className="text-sm text-red-500 logout">Cerrar sesión</button>
               </>
             ) : (
               // hide nav links on welcome page to avoid duplication with welcome card
