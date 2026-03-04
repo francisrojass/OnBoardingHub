@@ -79,7 +79,7 @@ sudo usermod -aG docker $USER && newgrp docker
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/OnBoardingHub.git
+git clone https://github.com/francisrojass/OnBoardingHub.git
 cd OnBoardingHub
 ```
 
