@@ -33,6 +33,7 @@ model Box {
   description  String
   objectives   String
   dockerImage  String
+  innerPort    Int          @default(7681)
   difficulty   Difficulty   @default(BEGINNER)
   companyBoxes CompanyBox[]
   sandboxes    Sandbox[]

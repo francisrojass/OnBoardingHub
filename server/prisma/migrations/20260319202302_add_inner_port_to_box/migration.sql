@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Box" ADD COLUMN     "innerPort" INTEGER NOT NULL DEFAULT 7681;
