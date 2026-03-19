@@ -22,21 +22,36 @@ export const launchSandbox = async (boxId: string, userId: string) => {
   const box = await prisma.box.findUnique({ where: { id: boxId } });
   if (!box) throw new Error('Box no encontrado');
 
+  // Guard: if user already has a RUNNING sandbox for this box, return it
+  const existingSandbox = await prisma.sandbox.findFirst({
+    where: { userId, boxId, status: 'RUNNING' },
+  });
+  if (existingSandbox) return existingSandbox;
+
   const port = await getAvailablePort();
+  const innerPort = box.innerPort; // e.g. 7681 for ttyd
 
   const sandbox = await prisma.sandbox.create({
     data: { userId, boxId, status: 'PENDING', port },
   });
 
   try {
+    const exposedPorts: Record<string, object> = { [`${innerPort}/tcp`]: {} };
+    const portBindings: Record<string, Array<{ HostPort: string }>> = {
+      [`${innerPort}/tcp`]: [{ HostPort: String(port) }],
+    };
+
     const container = await docker.createContainer({
       Image: box.dockerImage,
       Tty: true,
+      ExposedPorts: exposedPorts,
       HostConfig: {
-        PortBindings: {},
+        PortBindings: portBindings,
         Memory: 256 * 1024 * 1024,
         CpuShares: 256,
         AutoRemove: false,
+        // RNF-01: sandbox cannot reach internal services or other tenants
+        NetworkMode: 'bridge',
       },
       Labels: { sandboxId: sandbox.id, userId },
     });
@@ -48,9 +63,11 @@ export const launchSandbox = async (boxId: string, userId: string) => {
       data: { containerId: container.id, status: 'RUNNING' },
     });
 
-    logger.info(`Sandbox ${sandbox.id} lanzado - container ${container.id}`);
+    logger.info(
+      `Sandbox ${sandbox.id} lanzado — container ${container.id} — host:${port} → inner:${innerPort}`
+    );
 
-    return { ...sandbox, containerId: container.id, status: 'RUNNING' };
+    return { ...sandbox, containerId: container.id, status: 'RUNNING', port };
   } catch (err: any) {
     await prisma.sandbox.update({
       where: { id: sandbox.id },
