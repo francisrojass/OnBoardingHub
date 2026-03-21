@@ -56,3 +56,7 @@ export const createBox = async (data: {
 
   return box;
 };
+
+export const getAllBoxes = async () => {
+  return prisma.box.findMany();
+};

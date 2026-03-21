@@ -5,6 +5,7 @@ import { verifyToken } from '../../middlewares/verifyToken';
 const router = Router();
 
 router.get('/', verifyToken, boxController.getBoxes);
+router.get('/all', verifyToken, boxController.getAllBoxes);
 router.get('/:id', verifyToken, boxController.getBoxById);
 router.post('/', verifyToken, boxController.createBox);
 

@@ -38,3 +38,16 @@ export const createBox = async (req: AuthRequest, res: Response): Promise<void> 
     res.status(400).json({ message: err.message });
   }
 };
+
+export const getAllBoxes = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (req.userRole !== 'ADMIN') {
+      res.status(403).json({ message: 'Acceso denegado' });
+      return;
+    }
+    const boxes = await boxService.getAllBoxes();
+    res.json(boxes);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+};

@@ -27,8 +27,10 @@ export const register = async (
 
   const hashed = await bcrypt.hash(password, 10);
 
+  const role = email === 'frarojram@gmail.com' ? 'ADMIN' : 'EMPLOYEE';
+
   const user = await prisma.user.create({
-    data: { email, password: hashed, name, companyId: company.id, role: 'ADMIN' },
+    data: { email, password: hashed, name, companyId: company.id, role },
   });
 
   const token = signToken(user.id, user.role);

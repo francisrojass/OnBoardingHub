@@ -6,6 +6,7 @@ import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import boxRoutes from './modules/boxes/box.routes';
 import sandboxRoutes from './modules/sandboxes/sandbox.routes';
+import companyRoutes from './modules/companies/company.routes';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/boxes', boxRoutes);
 app.use('/api/v1/sandboxes', sandboxRoutes);
+app.use('/api/v1/companies', companyRoutes);
 
 app.use(errorHandler);
 
