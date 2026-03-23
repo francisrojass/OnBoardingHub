@@ -31,3 +31,15 @@ export const removeBoxFromCompany = async (companyId: string, boxId: string) => 
     where: { companyId_boxId: { companyId, boxId } },
   });
 };
+
+export const deleteCompany = async (companyId: string) => {
+  const users = await prisma.user.findMany({ where: { companyId }, select: { id: true } });
+  const userIds = users.map((u) => u.id);
+  
+  await prisma.$transaction([
+    prisma.companyBox.deleteMany({ where: { companyId } }),
+    prisma.sandbox.deleteMany({ where: { userId: { in: userIds } } }),
+    prisma.user.deleteMany({ where: { companyId } }),
+    prisma.company.delete({ where: { id: companyId } })
+  ]);
+};

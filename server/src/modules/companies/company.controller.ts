@@ -48,3 +48,17 @@ export const removeBox = async (req: AuthRequest, res: Response): Promise<void> 
     res.status(400).json({ message: err.message });
   }
 };
+
+export const deleteCompany = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (req.userRole !== 'ADMIN') {
+      res.status(403).json({ message: 'Acceso denegado' });
+      return;
+    }
+    const companyId = req.params['id'] as string;
+    await companyService.deleteCompany(companyId);
+    res.status(204).send();
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
