@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import BoxDetail from './pages/BoxDetail'
 import Profile from './pages/Profile'
 import Welcome from './pages/Welcome'
+import Admin from './pages/Admin'
 import { AuthContext } from './context/AuthContext'
 
 export default function App(){
@@ -26,9 +27,12 @@ export default function App(){
               <div className="text-sm text-gray-500">Comprobando sesión...</div>
             ) : auth && auth.user ? (
               <>
-                <Link to="/dashboard" className="text-sm text-gray-600">Dashboard</Link>
-                <Link to="/profile" className="text-sm text-gray-600">Perfil</Link>
-                <button onClick={auth.logout} className="text-sm text-red-500 logout">Cerrar sesión</button>
+                {auth.user.role === 'ADMIN' && (
+                  <Link to="/admin" className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">Panel IT</Link>
+                )}
+                <Link to="/dashboard" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Dashboard</Link>
+                <Link to="/profile" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Perfil</Link>
+                <button onClick={auth.logout} className="text-sm text-red-500 hover:text-red-600 transition-colors logout">Cerrar sesión</button>
               </>
             ) : (
               // hide nav links on welcome page to avoid duplication with welcome card
@@ -52,6 +56,7 @@ export default function App(){
       <main className="container py-8">
         <Routes>
           <Route path="/" element={<Welcome />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

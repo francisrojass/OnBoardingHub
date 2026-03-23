@@ -56,3 +56,15 @@ export const createBox = async (data: {
 
   return box;
 };
+
+export const getAllBoxes = async () => {
+  return prisma.box.findMany();
+};
+
+export const deleteBox = async (boxId: string) => {
+  await prisma.$transaction([
+    prisma.companyBox.deleteMany({ where: { boxId } }),
+    prisma.sandbox.deleteMany({ where: { boxId } }),
+    prisma.box.delete({ where: { id: boxId } })
+  ]);
+};
