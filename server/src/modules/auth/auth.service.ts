@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/database';
 import { ENV } from '../../config/env';
+import { createDefaultTasksForUser } from '../tasks/task.service';
 
 const signToken = (userId: string, role: string): string => {
   return jwt.sign(
@@ -27,11 +28,16 @@ export const register = async (
 
   const hashed = await bcrypt.hash(password, 10);
 
-  const role = email === 'frarojram@gmail.com' ? 'ADMIN' : 'EMPLOYEE';
+  const isFirstUser = (await prisma.user.count({ where: { companyId: company.id } })) === 0;
+  const role = isFirstUser ? 'ADMIN' : 'EMPLOYEE';
 
   const user = await prisma.user.create({
     data: { email, password: hashed, name, companyId: company.id, role },
   });
+
+  if (role === 'EMPLOYEE') {
+    await createDefaultTasksForUser(user.id);
+  }
 
   const token = signToken(user.id, user.role);
 
@@ -63,6 +69,8 @@ export const getMe = async (userId: string) => {
     name: user.name,
     avatar: user.avatar,
     role: user.role,
+    xp: user.xp,
+    level: user.level,
     company: { id: user.company.id, name: user.company.name },
   };
 };

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Task" ADD COLUMN     "boxId" TEXT;
+
+-- AddForeignKey
+ALTER TABLE "Task" ADD CONSTRAINT "Task_boxId_fkey" FOREIGN KEY ("boxId") REFERENCES "Box"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -13,7 +13,7 @@ export default function ConfirmModal({ isOpen, title, message, onConfirm, onCanc
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center animate-fade-in p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center animate-fade-in p-4 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in fade-in-up">
         <div className="flex items-center space-x-3 text-red-600 mb-3">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

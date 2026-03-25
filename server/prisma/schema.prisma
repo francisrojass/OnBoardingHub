@@ -7,17 +7,22 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  name      String
-  avatar    String?
-  role      Role      @default(EMPLOYEE)
-  companyId String
-  company   Company   @relation(fields: [companyId], references: [id])
-  sandboxes Sandbox[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  avatar        String?
+  role          Role           @default(EMPLOYEE)
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id])
+  sandboxes     Sandbox[]
+  tasks         Task[]
+  xp            Int            @default(0)
+  level         Int            @default(1)
+  boxProgresses BoxProgress[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Company {
@@ -28,15 +33,18 @@ model Company {
 }
 
 model Box {
-  id           String       @id @default(cuid())
-  title        String
-  description  String
-  objectives   String
-  dockerImage  String
-  innerPort    Int          @default(7681)
-  difficulty   Difficulty   @default(BEGINNER)
-  companyBoxes CompanyBox[]
-  sandboxes    Sandbox[]
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  objectives    String
+  dockerImage   String
+  innerPort     Int           @default(7681)
+  difficulty    Difficulty    @default(BEGINNER)
+  xpReward      Int           @default(100)
+  companyBoxes  CompanyBox[]
+  sandboxes     Sandbox[]
+  tasks         Task[]
+  boxProgresses BoxProgress[]
 }
 
 model CompanyBox {
@@ -62,9 +70,50 @@ model Sandbox {
   stoppedAt   DateTime?
 }
 
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  priority    Priority   @default(MEDIUM)
+  category    String     @default("General")
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  boxId       String?
+  box         Box?       @relation(fields: [boxId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model BoxProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  boxId       String
+  xpEarned    Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  box         Box       @relation(fields: [boxId], references: [id])
+
+  @@unique([userId, boxId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  type      NotificationType @default(INFO)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+}
+
 enum Role {
   EMPLOYEE
   ADMIN
+  SUPER_ADMIN
 }
 
 enum Difficulty {
@@ -78,4 +127,25 @@ enum SandboxStatus {
   RUNNING
   STOPPED
   ERROR
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  XP_GAINED
+  TASK_ASSIGNED
+  BOX_COMPLETED
 }

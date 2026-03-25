@@ -7,6 +7,11 @@ import userRoutes from './modules/users/user.routes';
 import boxRoutes from './modules/boxes/box.routes';
 import sandboxRoutes from './modules/sandboxes/sandbox.routes';
 import companyRoutes from './modules/companies/company.routes';
+import taskRoutes from './modules/tasks/task.routes';
+import adminRoutes from './modules/admin/admin.routes';
+import progressRoutes from './modules/progress/progress.routes';
+import notificationRoutes from './modules/notifications/notification.routes';
+import reportRoutes from './modules/reports/report.routes';
 
 const app = express();
 
@@ -23,6 +28,11 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/boxes', boxRoutes);
 app.use('/api/v1/sandboxes', sandboxRoutes);
 app.use('/api/v1/companies', companyRoutes);
+app.use('/api/v1/tasks', taskRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/progress', progressRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
 app.use(errorHandler);
 
