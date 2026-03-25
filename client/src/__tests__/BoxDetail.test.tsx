@@ -50,7 +50,11 @@ function renderBoxDetail(boxId = 'box-1', auth = mockAuthEmployee) {
 describe('BoxDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockApi.get.mockResolvedValue({ data: mockBox })
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === `/boxes/box-1`) return Promise.resolve({ data: mockBox })
+      if (url === '/sandboxes') return Promise.resolve({ data: [] })
+      return Promise.reject(new Error('URL not mocked'))
+    })
     mockApi.post.mockResolvedValue({ data: { id: 'sandbox-1', status: 'RUNNING' } })
   })
 

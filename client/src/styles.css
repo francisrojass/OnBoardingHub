@@ -12,7 +12,7 @@
   --text-light: #94a3b8;
   --border: #e2e8f0;
   --sidebar-width: 260px;
-  --topbar-height: 64px;
+  --topbar-height: 72px;
   --shadow-sm: 0 1px 3px rgba(15,23,42,0.07);
   --shadow-md: 0 4px 16px rgba(15,23,42,0.08);
   --shadow-lg: 0 8px 32px rgba(15,23,42,0.12);
@@ -54,7 +54,8 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 20px;
+  padding: 0 20px;
+  height: var(--topbar-height);
   border-bottom: 1px solid var(--border);
 }
 
@@ -201,6 +202,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  transition: margin-left 0.3s ease;
 }
 
 /* ── Top Bar ── */
@@ -215,6 +217,20 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
+}
+
+.topbar-branding {
+  font-size: 13px;
+  color: var(--text-light);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-branding b {
+  color: var(--text-mid);
+  font-weight: 700;
 }
 
 .topbar-menu-btn {
@@ -494,6 +510,14 @@ body {
   background: #10b981;
   border-color: #10b981;
   color: white;
+  width: auto;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 5px;
+  height: 30px;
+  border-radius: 999px;
+  font-family: inherit;
 }
 .box-action-btn.running:hover { background: #059669; border-color: #059669; }
 

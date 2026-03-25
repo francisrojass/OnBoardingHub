@@ -27,7 +27,7 @@ function AuthLayout() {
   return (
     <div className="app-layout">
       <Sidebar isOpen={sidebarOpen} />
-      <div className="main-wrapper">
+      <div className="main-wrapper" style={{ marginLeft: sidebarOpen ? 'var(--sidebar-width)' : 0 }}>
         <header className="topbar">
           <button
             className="topbar-menu-btn"
@@ -38,6 +38,10 @@ function AuthLayout() {
               <path d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </button>
+          <div className="topbar-branding">
+            <b>{auth.user?.company?.name || 'OnBoardingHub'}</b>
+            <span>learning by OnBoardingHub</span>
+          </div>
         </header>
         <main className="main-content">
           <Outlet />

@@ -258,12 +258,12 @@ export default function Dashboard() {
                       </svg>
                     </button>
                     {isRunning ? (
-                      <button className="box-action-btn running">
+                      <Link to={`/boxes/${box.id}`} className="box-action-btn running" style={{ textDecoration: 'none' }}>
                         <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="10"/>
                         </svg>
                         Live
-                      </button>
+                      </Link>
                     ) : (
                       <button
                         className="box-action-btn launch"
