@@ -1,217 +1,308 @@
-import React, { useContext } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useContext, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
-interface Box {
-  id: string
-  title: string
-  description: string
-  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+const ILLUSTRATIONS = [
+  'box-illustration-0',
+  'box-illustration-1',
+  'box-illustration-2',
+  'box-illustration-3',
+  'box-illustration-4',
+]
+
+// Deterministic "progress" derived from box id until backend tracks it
+function pseudoProgress(id: string, offset: number) {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
+  return ((h + offset) % 41) + 40 // 40–80 %
 }
 
-const DIFFICULTY_LABEL: Record<string, string> = {
-  BEGINNER: 'Principiante',
-  INTERMEDIATE: 'Intermedio',
-  ADVANCED: 'Avanzado',
+function BoxSvgIcon({ index }: { index: number }) {
+  const icons = [
+    // branching / git
+    <svg key="git" width="72" height="72" viewBox="0 0 64 64" fill="none">
+      <circle cx="14" cy="14" r="7" fill="white" fillOpacity="0.75"/>
+      <circle cx="14" cy="50" r="7" fill="white" fillOpacity="0.75"/>
+      <circle cx="50" cy="28" r="7" fill="white" fillOpacity="0.75"/>
+      <path d="M14 21v10m0 0c0 10 20 10 36-3M14 21c0-8 18-9 36 7" stroke="white" strokeWidth="3" strokeOpacity="0.7" strokeLinecap="round"/>
+    </svg>,
+    // workflow / jira
+    <svg key="jira" width="72" height="72" viewBox="0 0 64 64" fill="none">
+      <rect x="6" y="6" width="22" height="22" rx="5" fill="white" fillOpacity="0.7"/>
+      <rect x="36" y="6" width="22" height="22" rx="5" fill="white" fillOpacity="0.5"/>
+      <rect x="6" y="36" width="22" height="22" rx="5" fill="white" fillOpacity="0.5"/>
+      <rect x="36" y="36" width="22" height="22" rx="5" fill="white" fillOpacity="0.7"/>
+      <path d="M28 17h8M17 28v8M47 28v8" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>,
+    // code / uml
+    <svg key="code" width="72" height="72" viewBox="0 0 64 64" fill="none">
+      <rect x="4" y="10" width="56" height="44" rx="6" fill="white" fillOpacity="0.2"/>
+      <rect x="4" y="10" width="56" height="13" rx="6" fill="white" fillOpacity="0.4"/>
+      <circle cx="13" cy="17" r="2.5" fill="white" fillOpacity="0.8"/>
+      <circle cx="21" cy="17" r="2.5" fill="white" fillOpacity="0.5"/>
+      <circle cx="29" cy="17" r="2.5" fill="white" fillOpacity="0.5"/>
+      <path d="M14 34l-6 5 6 5m36-10l-6 5 6 5m-20-12l-4 14" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>,
+    // database
+    <svg key="db" width="72" height="72" viewBox="0 0 64 64" fill="none">
+      <ellipse cx="32" cy="16" rx="22" ry="9" fill="white" fillOpacity="0.6"/>
+      <path d="M10 16v14c0 4.8 9.8 9 22 9s22-4.2 22-9V16" stroke="white" strokeWidth="2.5"/>
+      <path d="M10 30v14c0 4.8 9.8 9 22 9s22-4.2 22-9V30" stroke="white" strokeWidth="2.5"/>
+    </svg>,
+    // cloud / api
+    <svg key="api" width="72" height="72" viewBox="0 0 64 64" fill="none">
+      <path d="M50 42a13 13 0 000-26 13 13 0 00-25.4 3.4A11 11 0 1014 42h36z" fill="white" fillOpacity="0.55"/>
+      <path d="M32 42v14m-9-6l9 6 9-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>,
+  ]
+  return icons[index % icons.length]
 }
 
-const DIFFICULTY_COLOR: Record<string, string> = {
-  BEGINNER: '#22c55e',
-  INTERMEDIATE: '#f59e0b',
-  ADVANCED: '#ef4444',
-}
-
-async function fetchBoxes() {
-  const res = await api.get('/boxes')
-  return res.data
+function getInitials(name?: string | null) {
+  if (!name) return 'U'
+  return name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export default function Dashboard() {
   const auth = useContext(AuthContext)
+  const queryClient = useQueryClient()
+  const [filter, setFilter] = useState('all')
+  const [sort, setSort] = useState('name')
 
-  if (!auth || !auth.token) {
-    return <Navigate to="/" replace />
-  }
+  const { data: boxes, isLoading, isError } = useQuery(
+    ['boxes'],
+    async () => { const res = await api.get('/boxes'); return res.data },
+    { enabled: !!auth?.token }
+  )
 
-  const { data, isLoading, isError } = useQuery<Box[]>(['boxes'], fetchBoxes, {
-    enabled: !!auth.token,
-  })
+  const { data: sandboxes } = useQuery(
+    ['sandboxes'],
+    async () => { const res = await api.get('/sandboxes'); return res.data },
+    { enabled: !!auth?.token }
+  )
+
+  const { data: progressData } = useQuery(
+    ['progress'],
+    async () => { const res = await api.get('/progress/me'); return res.data },
+    { enabled: !!auth?.token }
+  )
+
+  const launch = useMutation(
+    (boxId: string) => api.post('/sandboxes/launch', { boxId }),
+    { onSuccess: () => queryClient.invalidateQueries(['sandboxes']) }
+  )
 
   if (isLoading) {
     return (
-      <div style={styles.centerPane}>
-        <div style={styles.spinner} />
-        <p style={{ color: '#94a3b8', marginTop: 14 }}>Cargando módulos...</p>
+      <div className="empty-state">
+        <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: '0 auto 12px', opacity: 0.4 }}>
+          <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+        </svg>
+        <p>Cargando inventario...</p>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div style={styles.centerPane}>
-        <p style={{ color: '#ef4444' }}>Error cargando módulos. Asegúrate de estar autenticado.</p>
+      <div className="empty-state">
+        <h3>Error al cargar</h3>
+        <p>Verifica que el backend está activo.</p>
       </div>
     )
   }
 
+  const user = auth?.user
+  const totalBoxes = boxes?.length || 0
+  const xpEarned: number = progressData?.xp ?? user?.xp ?? 0
+  const currentLevel: number = progressData?.level ?? user?.level ?? 1
+  const XP_PER_LEVEL = 500
+  const currentLevelXp = xpEarned % XP_PER_LEVEL
+  const xpPct = Math.round((currentLevelXp / XP_PER_LEVEL) * 100)
+
+  // filter + sort
+  let displayed: any[] = boxes || []
+  if (filter !== 'all') {
+    displayed = displayed.filter((b: any) => b.difficulty?.toLowerCase() === filter)
+  }
+  if (sort === 'name') {
+    displayed = [...displayed].sort((a, b) => a.title.localeCompare(b.title))
+  }
+
   return (
-    <div>
-      <div style={styles.pageHeader}>
-        <h2 style={styles.pageTitle}>Tus módulos de onboarding</h2>
-        {auth.user && (
-          <p style={styles.subtitle}>
-            Bienvenido, <strong>{auth.user.name}</strong>. Selecciona un módulo para comenzar.
-          </p>
-        )}
+    <>
+      {/* ── Header ── */}
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1>My Inventory</h1>
+          <p>Your collection of onboarding boxes</p>
+        </div>
+
+        {/* XP Section */}
+        <div className="xp-section">
+          <div className="xp-level-info">
+            <div className="xp-label-row">
+              <span className="xp-level-label">Level: {currentLevel}</span>
+              <span className="xp-percent">{xpPct}%</span>
+            </div>
+            <div className="xp-level-bar-wrap">
+              <div className="xp-level-bar" style={{ width: `${xpPct}%` }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 5 }}>
+              {currentLevelXp} / {XP_PER_LEVEL} XP · Total: {xpEarned.toLocaleString()} XP
+            </div>
+          </div>
+          <div className="badge-group">
+            <div className="badge-item">
+              <span className="badge-icon">🥇</span>
+              <span className="badge-count">×10</span>
+            </div>
+            <div className="badge-item">
+              <span className="badge-icon">🥈</span>
+              <span className="badge-count">×36</span>
+            </div>
+            <div className="badge-item">
+              <span className="badge-icon">🏆</span>
+              <span className="badge-count">×14</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Empty state */}
-      {(!data || data.length === 0) ? (
-        <div style={styles.emptyCard}>
-          <div style={styles.emptyIcon}>📦</div>
-          <h3 style={styles.emptyTitle}>Sin módulos disponibles</h3>
-          <p style={styles.emptyText}>
-            Tu empresa aún no tiene módulos asignados. Contacta con tu administrador para empezar.
+      {/* ── Filters ── */}
+      <div className="filter-row">
+        <select
+          className="filter-select"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+        >
+          <option value="all">Active Boxes ({totalBoxes})</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+        <select
+          className="filter-select"
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+        >
+          <option value="name">Sort: Name</option>
+          <option value="progress">Sort: Progress</option>
+        </select>
+      </div>
+
+      {/* ── Box Grid ── */}
+      {displayed.length === 0 ? (
+        <div className="empty-state" style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-md)' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
+          <h3>No hay boxes disponibles</h3>
+          <p>
+            {filter !== 'all'
+              ? 'No hay boxes con ese filtro. Prueba otra categoría.'
+              : 'Todavía no tienes boxes asignados a tu empresa.'}
           </p>
         </div>
       ) : (
-        <div style={styles.grid}>
-          {data.map((box) => (
-            <div key={box.id} style={styles.card}>
-              <div style={styles.cardTop}>
-                <span
-                  style={{
-                    ...styles.badge,
-                    backgroundColor: DIFFICULTY_COLOR[box.difficulty] + '22',
-                    color: DIFFICULTY_COLOR[box.difficulty],
-                  }}
-                >
-                  {DIFFICULTY_LABEL[box.difficulty] ?? box.difficulty}
-                </span>
-                <h3 style={styles.cardTitle}>{box.title}</h3>
-                <p style={styles.cardDesc}>{box.description}</p>
+        <div className="box-grid">
+          {displayed.map((box: any, i: number) => {
+            const illClass = ILLUSTRATIONS[i % ILLUSTRATIONS.length]
+            const pct = pseudoProgress(box.id, i * 7)
+            const tasksDone = Math.max(1, Math.floor(pct / 15))
+            const tasksTotal = tasksDone + Math.floor(Math.random() * 3) + 1
+            const xp = (box.xpReward ?? 100) + i * 50
+            const isRunning = sandboxes?.some(
+              (s: any) => s.boxId === box.id && s.status === 'RUNNING'
+            )
+
+            return (
+              <div key={box.id} className="box-card">
+                <Link to={`/boxes/${box.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <div className={`box-illustration ${illClass}`}>
+                    <BoxSvgIcon index={i} />
+                  </div>
+                </Link>
+                <div className="box-card-body">
+                  <div className="box-card-title-row">
+                    <h3 className="box-card-title">{box.title}</h3>
+                    <button className="box-card-menu" aria-label="Opciones">···</button>
+                  </div>
+
+                  <div className="box-progress-row">
+                    <div className="box-progress-check">
+                      <svg width="8" height="8" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </div>
+                    <span>{tasksDone}/{tasksTotal} Tasks</span>
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--text-dark)' }}>
+                      {pct}%
+                    </span>
+                  </div>
+
+                  <div className="box-progress-bar-wrap">
+                    <div className="box-progress-bar" style={{ width: `${pct}%` }} />
+                  </div>
+
+                  <div className="box-card-bottom">
+                    <div className="box-xp">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                      {xp} XP
+                    </div>
+                    <button className="box-action-btn" title="Guardar">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                      </svg>
+                    </button>
+                    {isRunning ? (
+                      <button className="box-action-btn running">
+                        <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10"/>
+                        </svg>
+                        Live
+                      </button>
+                    ) : (
+                      <button
+                        className="box-action-btn launch"
+                        onClick={() => launch.mutate(box.id)}
+                        disabled={launch.isLoading}
+                      >
+                        ▶ Launch
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <Link to={`/boxes/${box.id}`} style={styles.btnStart}>
-                Ver módulo →
-              </Link>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
-    </div>
-  )
-}
 
-const styles: Record<string, React.CSSProperties> = {
-  pageHeader: {
-    marginBottom: 28,
-  },
-  pageTitle: {
-    margin: '0 0 4px',
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#0f172a',
-  },
-  subtitle: {
-    margin: 0,
-    color: '#64748b',
-    fontSize: 14,
-  },
-  centerPane: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 300,
-  },
-  spinner: {
-    width: 32,
-    height: 32,
-    border: '3px solid #e2e8f0',
-    borderTop: '3px solid #6366f1',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
-  emptyCard: {
-    background: 'white',
-    borderRadius: 12,
-    border: '1px dashed #cbd5e1',
-    padding: '56px 32px',
-    textAlign: 'center',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    margin: '0 0 8px',
-    fontSize: 18,
-    fontWeight: 600,
-    color: '#1e293b',
-  },
-  emptyText: {
-    margin: 0,
-    color: '#64748b',
-    fontSize: 14,
-    maxWidth: 400,
-    marginInline: 'auto',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: 20,
-  },
-  card: {
-    background: 'white',
-    borderRadius: 12,
-    border: '1px solid #e2e8f0',
-    padding: '20px 22px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    gap: 16,
-    transition: 'box-shadow 0.15s',
-  },
-  cardTop: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  badge: {
-    display: 'inline-block',
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    padding: '3px 8px',
-    borderRadius: 99,
-    alignSelf: 'flex-start',
-  },
-  cardTitle: {
-    margin: 0,
-    fontSize: 15,
-    fontWeight: 600,
-    color: '#0f172a',
-  },
-  cardDesc: {
-    margin: 0,
-    fontSize: 13,
-    color: '#6b7280',
-    lineHeight: 1.55,
-  },
-  btnStart: {
-    display: 'block',
-    textAlign: 'center',
-    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-    color: 'white',
-    borderRadius: 8,
-    padding: '9px 16px',
-    fontWeight: 600,
-    fontSize: 13,
-    textDecoration: 'none',
-    boxShadow: '0 2px 6px rgba(99,102,241,0.3)',
-  },
+      {/* ── Bottom Bar ── */}
+      <div className="page-bottom-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>
+            {getInitials(user?.name)}
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{user?.name || 'Usuario'}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-light)' }}>
+              {user?.role
+                ? user.role.charAt(0) + user.role.slice(1).toLowerCase()
+                : 'Employee'}
+            </div>
+          </div>
+        </div>
+        <button className="btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M12 5v14m7-7H5"/>
+          </svg>
+          New Box
+        </button>
+      </div>
+    </>
+  )
 }

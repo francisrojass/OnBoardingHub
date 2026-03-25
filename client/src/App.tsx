@@ -1,69 +1,90 @@
 import React, { useContext } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Routes, Route, Link } from 'react-router-dom'
-import Login from './pages/Login'
-import Register from './pages/Register'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { AuthContext } from './context/AuthContext'
+import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import BoxDetail from './pages/BoxDetail'
 import Profile from './pages/Profile'
+import Tasks from './pages/Tasks'
+import AdminTasks from './pages/AdminTasks'
+import LearningHub from './pages/LearningHub'
+import Notifications from './pages/Notifications'
+import AdminReports from './pages/AdminReports'
+import CompanySettings from './pages/CompanySettings'
+import Login from './pages/Login'
+import Register from './pages/Register'
 import Welcome from './pages/Welcome'
-import Admin from './pages/Admin'
-import { AuthContext } from './context/AuthContext'
 
-export default function App(){
+
+function getInitials(name?: string | null) {
+  if (!name) return 'U'
+  return name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function AuthLayout() {
   const auth = useContext(AuthContext)
-  const location = useLocation()
+  if (!auth) return null
+  if (auth.isAuthenticating) return <div className="loading-screen">Cargando...</div>
+  if (!auth.token) return <Navigate to="/" replace />
+
+  const user = auth.user
+  const initials = getInitials(user?.name)
+  const firstName = user?.name?.split(' ')[0] || 'User'
+  const role = user?.role
+    ? user.role.charAt(0) + user.role.slice(1).toLowerCase()
+    : 'Employee'
 
   return (
-    <div>
-      <header className="py-2 px-4 border-b bg-white/60 backdrop-blur sticky top-0 z-10">
-        <nav className="container flex items-center justify-between">
-          <div className="nav-brand">
-            <img src="/assets/logo.svg" alt="logo" className="logo" />
-            <Link to="/" className="title">OnBoardingHub</Link>
+    <div className="app-layout">
+      <Sidebar />
+      <div className="main-wrapper">
+        <header className="topbar">
+          <button className="topbar-menu-btn" aria-label="Toggle menu">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <div className="topbar-right">
+            <div className="topbar-welcome">
+              <div className="topbar-welcome-name">Welcome back, {firstName}!</div>
+              <div className="topbar-welcome-role">{role}</div>
+            </div>
+            <div className="topbar-avatar">{initials}</div>
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#94a3b8' }}>
+              <path d="M19 9l-7 7-7-7"/>
+            </svg>
           </div>
-          <div className="space-x-3 flex items-center nav-actions">
-            {auth && auth.isAuthenticating ? (
-              <div className="text-sm text-gray-500">Comprobando sesión...</div>
-            ) : auth && auth.user ? (
-              <>
-                {auth.user.role === 'ADMIN' && (
-                  <Link to="/admin" className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">Panel IT</Link>
-                )}
-                <Link to="/dashboard" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Dashboard</Link>
-                <Link to="/profile" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Perfil</Link>
-                <button onClick={auth.logout} className="text-sm text-red-500 hover:text-red-600 transition-colors logout">Cerrar sesión</button>
-              </>
-            ) : (
-              // hide nav links on welcome page to avoid duplication with welcome card
-              location.pathname === '/' ? null : (
-                // on /login show register only, on /register show login only, otherwise show both
-                location.pathname === '/login' ? (
-                  <Link to="/register" className="text-sm text-gray-600">Registro</Link>
-                ) : location.pathname === '/register' ? (
-                  <Link to="/login" className="text-sm text-gray-600">Login</Link>
-                ) : (
-                  <>
-                    <Link to="/login" className="text-sm text-gray-600">Login</Link>
-                    <Link to="/register" className="text-sm text-gray-600">Registro</Link>
-                  </>
-                )
-              )
-            )}
-          </div>
-        </nav>
-      </header>
-      <main className="container py-8">
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/boxes/:id" element={<BoxDetail />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
-      </main>
+        </header>
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
+  )
+}
+
+export default function App() {
+  const auth = useContext(AuthContext)
+  if (auth?.isAuthenticating) return <div className="loading-screen">Cargando...</div>
+
+  return (
+    <Routes>
+      <Route path="/" element={<Welcome />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route element={<AuthLayout />}>
+        {/* Employee routes */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/boxes/:id" element={<BoxDetail />} />
+        <Route path="/learning-hub" element={<LearningHub />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/profile" element={<Profile />} />
+        {/* Admin routes */}
+        <Route path="/admin/tasks" element={<AdminTasks />} />
+        <Route path="/admin/reports" element={<AdminReports />} />
+        <Route path="/admin/company" element={<CompanySettings />} />
+      </Route>
+    </Routes>
   )
 }

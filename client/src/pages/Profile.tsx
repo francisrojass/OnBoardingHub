@@ -1,82 +1,174 @@
 import React, { useContext, useState, useEffect } from 'react'
 import { AuthContext } from '../context/AuthContext'
 import api from '../services/api'
-import { Link } from 'react-router-dom'
 
-export default function Profile(){
+function getInitials(name?: string | null) {
+  if (!name) return 'U'
+  return name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+export default function Profile() {
   const auth = useContext(AuthContext)
-  const [profile, setProfile] = useState<any | null>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [name, setName] = useState('')
-  const [boxes, setBoxes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
   useEffect(() => {
     if (!auth) return
-    const load = async () => {
-      try {
-        const res = await api.get('/users/profile')
-        setProfile(res.data)
-        setName(res.data.name || '')
-        const b = await api.get('/boxes')
-        setBoxes(b.data || [])
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    api.get('/users/profile')
+      .then(res => { setProfile(res.data); setName(res.data.name || '') })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [auth])
 
   if (!auth) return null
-  if (loading) return <div>Loading...</div>
+  if (loading) return <div className="empty-state"><p>Cargando perfil...</p></div>
 
   const save = async () => {
+    setSaving(true)
+    setMsg(null)
     try {
       const res = await api.put('/users/profile', { name })
       setProfile(res.data)
-      // update auth user if context exposes updateUser
-      if ((auth as any).updateUser) (auth as any).updateUser(res.data)
-      alert('Nombre guardado')
-    } catch (err:any) { alert(err.response?.data?.message || err.message || 'Error') }
+      if (auth.updateUser) auth.updateUser(res.data)
+      setMsg({ text: 'Perfil guardado correctamente', ok: true })
+    } catch (err: any) {
+      setMsg({ text: err.response?.data?.message || err.message || 'Error', ok: false })
+    } finally {
+      setSaving(false)
+    }
   }
 
+  const role = profile?.role
+    ? profile.role.charAt(0) + profile.role.slice(1).toLowerCase()
+    : 'Employee'
+
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-xl font-semibold mb-4">Perfil</h2>
-      <div className="card p-6 space-y-3">
-        <div>
-          <label className="text-sm">Email</label>
-          <div className="mt-1 text-gray-700">{profile?.email}</div>
-        </div>
-        <div>
-          <label className="text-sm">Empresa</label>
-          <div className="mt-1 text-gray-700">{profile?.company?.name}</div>
-        </div>
-        <div>
-          <label className="text-sm">Nombre</label>
-          <input value={name} onChange={e=>setName(e.target.value)} className="w-full mt-1 p-2 border rounded" />
-        </div>
-        <div>
-          <label className="text-sm">Boxes disponibles</label>
-          <div className="mt-2 space-y-2">
-            {boxes.map(b => (
-              <div key={b.id} className="p-3 card flex justify-between items-center">
-                <div>
-                  <div className="font-medium">{b.title}</div>
-                  <div className="text-sm text-gray-600">{b.description}</div>
-                </div>
-                <Link to={`/boxes/${b.id}`} className="text-sm text-blue-600">Ver</Link>
-              </div>
-            ))}
-            {boxes.length === 0 && <div className="text-sm text-gray-500">No hay boxes disponibles</div>}
-          </div>
-        </div>
-        <div className="flex justify-between">
-          <button onClick={() => auth.logout()} className="px-3 py-1 bg-red-500 text-white rounded">Cerrar sesión</button>
-          <button onClick={save} className="px-3 py-1 bg-green-600 text-white rounded">Guardar</button>
+    <>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1>Mi Perfil</h1>
+          <p>Gestiona tu información y preferencias de cuenta</p>
         </div>
       </div>
-    </div>
+
+      <div className="profile-grid">
+        {/* ── Left: Avatar / info ── */}
+        <div className="profile-card" style={{ textAlign: 'center' }}>
+          <div className="profile-avatar-large">{getInitials(profile?.name)}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+            {profile?.name || 'Usuario'}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 16 }}>
+            {profile?.email}
+          </div>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'var(--primary-light)', color: 'var(--primary)',
+            borderRadius: 999, padding: '4px 14px', fontSize: 12, fontWeight: 600,
+          }}>
+            {profile?.role === 'ADMIN' ? '👑 Admin' : '👤 Employee'}
+          </div>
+
+          {profile?.company && (
+            <div style={{
+              marginTop: 20, padding: '12px 16px',
+              background: 'var(--bg)', borderRadius: 10, textAlign: 'left',
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                Empresa
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{profile.company.name}</div>
+            </div>
+          )}
+
+          {/* XP mini-bar */}
+          {(() => {
+            const XP_PER_LEVEL = 500
+            const totalXp: number = profile?.xp ?? 0
+            const currentLevel: number = profile?.level ?? 1
+            const levelXp = totalXp % XP_PER_LEVEL
+            const xpPct = Math.round((levelXp / XP_PER_LEVEL) * 100)
+            return (
+              <div style={{ marginTop: 20, textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 6 }}>
+                  <span>XP Progress</span>
+                  <span>Level {currentLevel}</span>
+                </div>
+                <div className="xp-level-bar-wrap">
+                  <div className="xp-level-bar" style={{ width: `${xpPct}%` }} />
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 4 }}>
+                  {levelXp.toLocaleString()} / {XP_PER_LEVEL} XP · Total: {totalXp.toLocaleString()} XP
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* ── Right: Edit form ── */}
+        <div className="profile-card">
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 22 }}>Editar perfil</h2>
+
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              className="form-input"
+              value={profile?.email || ''}
+              disabled
+              style={{ background: 'var(--bg)', cursor: 'not-allowed' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Rol</label>
+            <input
+              className="form-input"
+              value={role}
+              disabled
+              style={{ background: 'var(--bg)', cursor: 'not-allowed' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Nombre</label>
+            <input
+              className="form-input"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Tu nombre completo"
+            />
+          </div>
+
+          {msg && (
+            <div style={{
+              background: msg.ok ? '#dcfce7' : '#fee2e2',
+              color: msg.ok ? '#16a34a' : '#dc2626',
+              borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14,
+            }}>
+              {msg.text}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8 }}>
+            <button
+              className="btn-secondary"
+              onClick={() => auth.logout()}
+              style={{ color: '#ef4444', borderColor: '#fecaca' }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              Cerrar sesión
+            </button>
+            <button className="btn-primary" onClick={save} disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

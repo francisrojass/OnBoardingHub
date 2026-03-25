@@ -1,75 +1,119 @@
 import React, { useState, useContext } from 'react'
-import api from '../services/api'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
+import api from '../services/api'
 
-export default function Register(){
+export default function Register() {
   const auth = useContext(AuthContext)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
 
-  const submit = async (e:React.FormEvent) => {
+  if (auth && auth.token) return <Navigate to="/dashboard" replace />
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setLoading(true)
     try {
-      // quick health check to provide a clearer error if backend is not reachable
-      try {
-        // backend exposes health at /api/health (root), while api.baseURL includes /api/v1
-        const base = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3001/api/v1'
-        const healthBase = base.replace(/\/api\/v1\/?$/i, '/api')
-        const healthUrl = `${healthBase}/health`.replace(/([^:]\/)\/+/, '$1')
-        await api.get(healthUrl)
-      } catch (hErr:any) {
-        setError(`No se puede contactar con el backend: ${hErr.message || 'Network Error'}`)
-        return
-      }
-
       await api.post('/auth/register', { email, password, name, companyName })
-      // autologin after register if auth context available
       if (auth) {
         await auth.login(email, password)
         navigate('/dashboard')
       } else {
         navigate('/login')
       }
-    } catch (err:any) { setError(err.response?.data?.message || err.message || 'Error') }
-  }
-
-  // if already authenticated, redirect to dashboard
-  if (auth && auth.token) {
-    // prevent showing register form when already logged
-    return <Navigate to="/dashboard" replace />
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Error al registrarse')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Registro</h1>
-      <form onSubmit={submit} className="space-y-3 card p-6">
-        <div>
-          <label className="text-sm">Nombre</label>
-          <input value={name} onChange={e=>setName(e.target.value)} className="w-full mt-1 p-2 border rounded" />
+    <div className="auth-page">
+      <div className="auth-box">
+        <div className="auth-logo">
+          <div className="auth-logo-icon">OH</div>
+          <span className="auth-logo-text">OnBoardingHub</span>
         </div>
-        <div>
-          <label className="text-sm">Empresa</label>
-          <input value={companyName} onChange={e=>setCompanyName(e.target.value)} className="w-full mt-1 p-2 border rounded" />
+
+        <h1 className="auth-title">Crear cuenta</h1>
+        <p className="auth-subtitle">Únete a tu plataforma de onboarding</p>
+
+        <form onSubmit={submit}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="reg-name">Nombre completo</label>
+            <input
+              id="reg-name"
+              type="text"
+              className="form-input"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Martin Smith"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="reg-company">Empresa</label>
+            <input
+              id="reg-company"
+              type="text"
+              className="form-input"
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
+              placeholder="Nombre de tu empresa"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="reg-email">Email</label>
+            <input
+              id="reg-email"
+              type="email"
+              className="form-input"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="tu@empresa.com"
+              autoComplete="email"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="reg-password">Contraseña</label>
+            <input
+              id="reg-password"
+              type="password"
+              className="form-input"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              autoComplete="new-password"
+              minLength={6}
+              required
+            />
+          </div>
+
+          {error && (
+            <div style={{ background: '#fee2e2', color: '#dc2626', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+
+          <button type="submit" className="btn-primary auth-submit" disabled={loading}>
+            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          ¿Ya tienes cuenta?{' '}
+          <Link to="/login">Iniciar sesión</Link>
         </div>
-        <div>
-          <label className="text-sm">Email</label>
-          <input value={email} onChange={e=>setEmail(e.target.value)} className="w-full mt-1 p-2 border rounded" />
-        </div>
-        <div>
-          <label className="text-sm">Contraseña</label>
-          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" className="w-full mt-1 p-2 border rounded" />
-        </div>
-        {error && <div className="text-red-600">{error}</div>}
-        <div className="flex justify-end">
-          <button className="px-4 py-2 bg-green-600 text-white rounded">Crear cuenta</button>
-        </div>
-      </form>
+      </div>
     </div>
   )
 }
