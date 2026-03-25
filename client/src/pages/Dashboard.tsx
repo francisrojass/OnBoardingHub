@@ -296,12 +296,14 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <button className="btn-primary">
-          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path d="M12 5v14m7-7H5"/>
-          </svg>
-          New Box
-        </button>
+        {auth?.user?.role === 'SUPER_ADMIN' && (
+          <button className="btn-primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M12 5v14m7-7H5"/>
+            </svg>
+            New Box
+          </button>
+        )}
       </div>
     </>
   )

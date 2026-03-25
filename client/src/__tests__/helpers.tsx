@@ -23,6 +23,14 @@ export const mockAdminUser = {
   role: 'ADMIN' as const,
 }
 
+export const mockSuperAdminUser = {
+  ...mockUser,
+  id: 'superadmin-1',
+  name: 'Super Admin',
+  email: 'superadmin@test.com',
+  role: 'SUPER_ADMIN' as const,
+}
+
 export const mockAuthEmployee = {
   token: 'test-token',
   user: mockUser,
@@ -35,6 +43,11 @@ export const mockAuthEmployee = {
 export const mockAuthAdmin = {
   ...mockAuthEmployee,
   user: mockAdminUser,
+}
+
+export const mockAuthSuperAdmin = {
+  ...mockAuthEmployee,
+  user: mockSuperAdminUser,
 }
 
 export const mockAuthUnauthenticated = {
@@ -61,7 +74,7 @@ export function createTestQueryClient() {
 }
 
 interface RenderOptions2 extends Omit<RenderOptions, 'wrapper'> {
-  auth?: typeof mockAuthEmployee | typeof mockAuthAdmin | typeof mockAuthUnauthenticated
+  auth?: typeof mockAuthEmployee | typeof mockAuthAdmin | typeof mockAuthSuperAdmin | typeof mockAuthUnauthenticated
   initialRoute?: string
 }
 

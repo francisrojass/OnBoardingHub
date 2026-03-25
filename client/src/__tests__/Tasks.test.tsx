@@ -16,6 +16,7 @@ vi.mock('../services/api', () => ({
 import api from '../services/api'
 const mockApi = api as any
 
+// Each task linked to a distinct box, all with sandboxes assigned
 const mockTasks = [
   {
     id: 'task-1',
@@ -25,7 +26,7 @@ const mockTasks = [
     priority: 'HIGH',
     category: 'Técnico',
     createdAt: '2024-01-01T00:00:00Z',
-    box: null,
+    box: { id: 'box-1', title: 'Git Basics', difficulty: 'BEGINNER' },
   },
   {
     id: 'task-2',
@@ -35,7 +36,7 @@ const mockTasks = [
     priority: 'MEDIUM',
     category: 'Onboarding',
     createdAt: '2024-01-01T00:00:00Z',
-    box: { id: 'box-1', title: 'Git Basics', difficulty: 'BEGINNER' },
+    box: { id: 'box-2', title: 'Docker Advanced', difficulty: 'ADVANCED' },
   },
   {
     id: 'task-3',
@@ -45,14 +46,36 @@ const mockTasks = [
     priority: 'LOW',
     category: 'Social',
     createdAt: '2024-01-01T00:00:00Z',
-    box: null,
+    box: { id: 'box-3', title: 'API Design', difficulty: 'INTERMEDIATE' },
   },
 ]
+
+const mockSandboxes = [
+  { id: 's-1', boxId: 'box-1', status: 'RUNNING' },
+  { id: 's-2', boxId: 'box-2', status: 'STOPPED' },
+  { id: 's-3', boxId: 'box-3', status: 'RUNNING' },
+]
+
+// A task linked to a box with NO sandbox → should be filtered out
+const taskWithoutSandbox = {
+  id: 'task-hidden',
+  title: 'Tarea sin sandbox',
+  description: null,
+  status: 'PENDING',
+  priority: 'LOW',
+  category: 'Oculto',
+  createdAt: '2024-01-01T00:00:00Z',
+  box: { id: 'box-99', title: 'Sin sandbox', difficulty: 'BEGINNER' },
+}
 
 describe('Tasks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockApi.get.mockResolvedValue({ data: mockTasks })
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/tasks') return Promise.resolve({ data: mockTasks })
+      if (url === '/sandboxes') return Promise.resolve({ data: mockSandboxes })
+      return Promise.resolve({ data: [] })
+    })
     mockApi.patch.mockResolvedValue({ data: {} })
   })
 
@@ -213,6 +236,45 @@ describe('Tasks', () => {
       expect(screen.getByText('Alta')).toBeInTheDocument()
       expect(screen.getByText('Media')).toBeInTheDocument()
       expect(screen.getByText('Baja')).toBeInTheDocument()
+    })
+  })
+
+  // ─── Filtrado por sandbox ───
+
+  it('oculta tareas cuyo box no tiene sandbox asignado', async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/tasks') return Promise.resolve({ data: [...mockTasks, taskWithoutSandbox] })
+      if (url === '/sandboxes') return Promise.resolve({ data: mockSandboxes })
+      return Promise.resolve({ data: [] })
+    })
+    renderWithProviders(<Tasks />, { auth: mockAuthEmployee })
+    await waitFor(() => expect(screen.getByText('Configurar entorno')).toBeInTheDocument())
+    expect(screen.queryByText('Tarea sin sandbox')).not.toBeInTheDocument()
+  })
+
+  it('muestra mensaje de sandboxes cuando el usuario no tiene ninguno asignado', async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/tasks') return Promise.resolve({ data: mockTasks })
+      if (url === '/sandboxes') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
+    })
+    renderWithProviders(<Tasks />, { auth: mockAuthEmployee })
+    await waitFor(() => {
+      expect(screen.getByText('No hay tareas')).toBeInTheDocument()
+      expect(screen.getByText(/Lanza un sandbox para ver tus tareas/i)).toBeInTheDocument()
+    })
+  })
+
+  it('no muestra tareas cuando el usuario no tiene sandboxes', async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/tasks') return Promise.resolve({ data: mockTasks })
+      if (url === '/sandboxes') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
+    })
+    renderWithProviders(<Tasks />, { auth: mockAuthEmployee })
+    await waitFor(() => {
+      expect(screen.queryByText('Configurar entorno')).not.toBeInTheDocument()
+      expect(screen.queryByText('Leer documentación')).not.toBeInTheDocument()
     })
   })
 })

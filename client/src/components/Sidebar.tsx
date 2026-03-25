@@ -123,7 +123,44 @@ const adminNav = [
   },
 ]
 
-export default function Sidebar() {
+const superAdminNav = [
+  {
+    label: 'Dashboard',
+    path: '/dashboard',
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Panel IT',
+    path: '/admin',
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Mi Perfil',
+    path: '/profile',
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      </svg>
+    ),
+  },
+]
+
+interface SidebarProps {
+  isOpen: boolean
+}
+
+export default function Sidebar({ isOpen }: SidebarProps) {
   const auth = useContext(AuthContext)
   const location = useLocation()
   const user = auth?.user
@@ -132,8 +169,9 @@ export default function Sidebar() {
     ? user.role.charAt(0) + user.role.slice(1).toLowerCase()
     : 'Employee'
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const isAdmin = user?.role === 'ADMIN'
-  const navItems = isAdmin ? adminNav : employeeNav
+  const navItems = isSuperAdmin ? superAdminNav : isAdmin ? adminNav : employeeNav
 
   const { data: notifData } = useQuery(
     ['notifications'],
@@ -144,18 +182,21 @@ export default function Sidebar() {
   const unreadCount: number = notifData?.unreadCount || 0
 
   return (
-    <aside className="sidebar">
+    <aside
+      className="sidebar"
+      style={!isOpen ? { width: 0, minWidth: 0, padding: 0, overflow: 'hidden' } : undefined}
+    >
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">OH</div>
+        <img src="/assets/logo.svg" alt="logo" style={{ width: 32, height: 32, objectFit: 'contain' }} />
         <div className="sidebar-logo-text">OnBoarding<br />Hub</div>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSuperAdmin) && (
         <div className="sidebar-role-badge">
           <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2l3 6.5L22 9.3l-5 4.9 1.2 7-6.2-3.3L5.8 21 7 14 2 9.3l7-.8z"/>
           </svg>
-          Admin
+          {isSuperAdmin ? 'Super Admin' : 'Admin'}
         </div>
       )}
 

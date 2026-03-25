@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders, mockAuthEmployee } from './helpers'
+import { renderWithProviders, mockAuthEmployee, mockAuthSuperAdmin } from './helpers'
 import Dashboard from '../pages/Dashboard'
 
 vi.mock('../services/api', () => ({
@@ -178,6 +178,21 @@ describe('Dashboard', () => {
     renderWithProviders(<Dashboard />, { auth: mockAuthEmployee })
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument()
+    })
+  })
+
+  // ─── Control de acceso: botón New Box ───
+
+  it('no muestra el botón "New Box" para empleados', async () => {
+    renderWithProviders(<Dashboard />, { auth: mockAuthEmployee })
+    await waitFor(() => expect(screen.getByText('My Inventory')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /New Box/i })).not.toBeInTheDocument()
+  })
+
+  it('muestra el botón "New Box" solo para Super Admin', async () => {
+    renderWithProviders(<Dashboard />, { auth: mockAuthSuperAdmin })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Box/i })).toBeInTheDocument()
     })
   })
 })

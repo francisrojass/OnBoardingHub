@@ -34,18 +34,27 @@ export default function Tasks() {
     queryFn: () => api.get('/tasks').then((r) => r.data),
   })
 
+  const { data: sandboxes = [] } = useQuery<any[]>({
+    queryKey: ['sandboxes'],
+    queryFn: () => api.get('/sandboxes').then((r) => r.data),
+  })
+
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: Task['status'] }) =>
       api.patch(`/tasks/${id}`, { status }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
 
-  const completed = tasks.filter((t) => t.status === 'COMPLETED').length
-  const inProgress = tasks.filter((t) => t.status === 'IN_PROGRESS').length
-  const total = tasks.length
+  // Only show tasks linked to boxes the user has a sandbox for
+  const sandboxBoxIds = new Set(sandboxes.map((s: any) => s.boxId).filter(Boolean))
+  const visibleTasks = tasks.filter((t) => t.box && sandboxBoxIds.has(t.box.id))
+
+  const completed = visibleTasks.filter((t) => t.status === 'COMPLETED').length
+  const inProgress = visibleTasks.filter((t) => t.status === 'IN_PROGRESS').length
+  const total = visibleTasks.length
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0
 
-  const filtered = filter === 'ALL' ? tasks : tasks.filter((t) => t.status === filter)
+  const filtered = filter === 'ALL' ? visibleTasks : visibleTasks.filter((t) => t.status === filter)
 
   const categories = Array.from(new Set(filtered.map((t) => t.category)))
 
@@ -112,7 +121,7 @@ export default function Tasks() {
       {categories.length === 0 ? (
         <div className="empty-state">
           <h3>No hay tareas</h3>
-          <p>Prueba con otro filtro</p>
+          <p>{sandboxBoxIds.size === 0 ? 'No tienes sandboxes asignados. Lanza un sandbox para ver tus tareas.' : 'Prueba con otro filtro.'}</p>
         </div>
       ) : (
         categories.map((cat) => (

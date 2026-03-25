@@ -18,7 +18,7 @@ export default function Admin() {
     message: string;
   }>({ isOpen: false, type: null, id: null, title: '', message: '' });
 
-  if (!auth?.user || auth.user.role !== 'ADMIN') {
+  if (!auth?.user || auth.user.role !== 'SUPER_ADMIN') {
     return <Navigate to="/dashboard" replace />
   }
 
