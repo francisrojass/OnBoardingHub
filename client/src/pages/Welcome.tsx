@@ -8,7 +8,9 @@ export default function Welcome() {
 
   return (
     <div className="welcome-page">
-      <div className="welcome-logo">OH</div>
+      <div className="welcome-logo">
+        <img src="/assets/logo.png" alt="OnBoardingHub Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      </div>
 
       <h1 className="welcome-title">
         Transforma el onboarding<br />de tu equipo

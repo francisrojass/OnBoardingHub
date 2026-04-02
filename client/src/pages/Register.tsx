@@ -38,7 +38,9 @@ export default function Register() {
     <div className="auth-page">
       <div className="auth-box">
         <div className="auth-logo">
-          <div className="auth-logo-icon">OH</div>
+          <div className="auth-logo-icon">
+            <img src="/assets/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <span className="auth-logo-text">OnBoardingHub</span>
         </div>
 
