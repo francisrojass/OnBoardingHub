@@ -1,8 +1,0 @@
-{
-  "title": "Terminal Sandbox — Ubuntu Básico",
-  "description": "Entorno de terminal aislado basado en Ubuntu. Contiene Git, Curl, Vim y Nano. Ideal como primera toma de contacto con el flujo de trabajo de la empresa.",
-  "objectives": "1. Clonar un repositorio ficticio.\n2. Crear una rama de feature.\n3. Realizar un commit y lanzar una Pull Request simulada.",
-  "difficulty": "BEGINNER",
-  "innerPort": 7681,
-  "xpReward": 100
-}

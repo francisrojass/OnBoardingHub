@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
@@ -82,6 +82,19 @@ export default function BoxDetail() {
   )
 
   const activeSandbox = Array.isArray(sandboxes) ? sandboxes.find((s: any) => s.boxId === id && s.status === 'RUNNING') : null
+
+  // Delay showing the iframe to allow Docker Desktop to activate port forwarding on Windows
+  const [iframeReady, setIframeReady] = useState(false)
+  useEffect(() => {
+    if (activeSandbox?.id) {
+      setIframeReady(false)
+      const t = setTimeout(() => setIframeReady(true), 2000)
+      return () => clearTimeout(t)
+    } else {
+      setIframeReady(false)
+    }
+  }, [activeSandbox?.id])
+
   const boxTasks = Array.isArray(allTasks) ? allTasks.filter((t: any) => t.box?.id === id) : []
   const completedTasksCount = boxTasks.filter((t: any) => t.status === 'COMPLETED').length
   const totalTasksCount = boxTasks.length
@@ -242,11 +255,18 @@ export default function BoxDetail() {
                         {stop.isLoading ? 'Deteniendo...' : 'Cerrar Terminal'}
                       </button>
                     </div>
-                    <iframe 
-                      src={`http://${window.location.hostname}:${activeSandbox.port}`}
-                      style={{ flex: 1, border: 'none', background: '#000' }}
-                      title="Terminal"
-                    />
+                    {iframeReady ? (
+                      <iframe
+                        src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                        style={{ flex: 1, border: 'none', background: '#000' }}
+                        title="Terminal"
+                      />
+                    ) : (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#94a3b8', fontSize: 13, gap: 10 }}>
+                        <div style={{ width: 16, height: 16, border: '2px solid #334155', borderTop: '2px solid #10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                        Iniciando sandbox…
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -266,11 +286,18 @@ export default function BoxDetail() {
                       {stop.isLoading ? 'Deteniendo...' : 'Cerrar Terminal'}
                     </button>
                   </div>
-                  <iframe 
-                    src={`http://${window.location.hostname}:${activeSandbox.port}`}
-                    style={{ flex: 1, border: 'none', background: '#000' }}
-                    title="Terminal"
-                  />
+                  {iframeReady ? (
+                    <iframe
+                      src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                      style={{ flex: 1, border: 'none', background: '#000' }}
+                      title="Terminal"
+                    />
+                  ) : (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#94a3b8', fontSize: 13, gap: 10 }}>
+                      <div style={{ width: 16, height: 16, border: '2px solid #334155', borderTop: '2px solid #10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      Iniciando sandbox…
+                    </div>
+                  )}
                 </div>
               )}
             </>

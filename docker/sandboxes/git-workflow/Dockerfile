@@ -1,9 +1,11 @@
-FROM onboardinghub/ubuntu-basic
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ── Extra tools (ubuntu-basic already has git, curl, vim, nano, ttyd, tree) ──
-RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+# ── Core tools + jq ─────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y \
+    curl git vim nano ttyd tree jq \
+    && rm -rf /var/lib/apt/lists/*
 
 # ── Git config for the sandbox user ─────────────────────────────────
 RUN git config --global user.name "Novato OnBoarding" && \

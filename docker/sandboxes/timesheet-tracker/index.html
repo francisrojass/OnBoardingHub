@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imputación de Horas — OnBoardingHub Corp</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#2563eb;--primary-light:#dbeafe;--primary-dark:#1d4ed8;
+  --bg:#f1f5f9;--card:#fff;--border:#e2e8f0;
+  --text:#1e293b;--text-mid:#475569;--text-light:#94a3b8;
+  --success:#10b981;--success-bg:#dcfce7;
+  --warning:#f59e0b;--warning-bg:#fef3c7;
+  --error:#ef4444;--error-bg:#fee2e2;
+  --radius:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+button{cursor:pointer;font-family:inherit;font-size:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit}
+
+/* ── Layout ── */
+.app{display:flex;flex-direction:column;height:100vh}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-left{display:flex;align-items:center;gap:14px}
+.logo{width:32px;height:32px;background:var(--primary);border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px}
+.header-title{font-size:15px;font-weight:700;color:var(--text)}
+.header-subtitle{font-size:11px;color:var(--text-light)}
+.header-right{display:flex;align-items:center;gap:10px}
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:20px;padding:4px 12px 4px 4px}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700;font-size:11px}
+.user-name{font-size:12px;font-weight:500;color:var(--text-mid)}
+.btn-verify{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text-mid);display:flex;align-items:center;gap:5px;transition:.2s}
+.btn-verify:hover{border-color:var(--primary);color:var(--primary)}
+.btn-verify.has-all{background:var(--success-bg);border-color:var(--success);color:var(--success)}
+
+/* ── Week Nav ── */
+.week-bar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.week-label{font-size:14px;font-weight:600}
+.week-total{font-size:12px;color:var(--text-mid)}
+.week-total strong{color:var(--text);font-size:14px}
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.status-draft{background:#f1f5f9;color:var(--text-light)}
+.status-ready{background:var(--warning-bg);color:var(--warning)}
+.status-submitted{background:var(--success-bg);color:var(--success)}
+
+/* ── Main ── */
+.main{flex:1;overflow:auto;padding:16px 20px}
+
+/* ── Day Card ── */
+.day-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.day-header{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;background:#fafbfc;border-bottom:1px solid var(--border)}
+.day-name{font-weight:700;font-size:13px}
+.day-date{font-size:11px;color:var(--text-light);margin-left:8px}
+.day-hours{font-size:12px;font-weight:600}
+.day-hours.ok{color:var(--success)}
+.day-hours.warn{color:var(--error)}
+.day-hours.empty{color:var(--text-light)}
+
+.entries{padding:8px 16px}
+.entry-row{display:grid;grid-template-columns:200px 70px 1fr 32px;gap:8px;align-items:start;padding:6px 0;border-bottom:1px solid #f1f5f9}
+.entry-row:last-child{border-bottom:none}
+.entry-row select,.entry-row input,.entry-row textarea{border:1px solid var(--border);border-radius:4px;padding:6px 8px;outline:none;transition:.15s}
+.entry-row select:focus,.entry-row input:focus,.entry-row textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light)}
+.entry-row select{background:white}
+.entry-row textarea{resize:none;min-height:32px;font-size:12px}
+.entry-row input[type=number]{text-align:center;-moz-appearance:textfield}
+.entry-row input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+.btn-remove{background:none;border:none;color:var(--text-light);padding:6px;border-radius:4px;font-size:16px;line-height:1;transition:.15s}
+.btn-remove:hover{background:var(--error-bg);color:var(--error)}
+
+.btn-add{border:1px dashed var(--border);background:none;color:var(--text-light);width:100%;padding:6px;border-radius:4px;font-size:12px;margin:4px 0 8px;transition:.15s}
+.btn-add:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+.no-entries{padding:12px;text-align:center;color:var(--text-light);font-size:12px}
+
+/* ── Footer ── */
+.footer{background:var(--card);border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.footer-actions{display:flex;gap:8px}
+.btn{padding:8px 18px;border-radius:6px;font-weight:600;font-size:12px;border:none;transition:.15s}
+.btn-save{background:var(--bg);color:var(--text-mid);border:1px solid var(--border)}
+.btn-save:hover{background:var(--border)}
+.btn-submit{background:var(--primary);color:white}
+.btn-submit:hover{background:var(--primary-dark)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.btn-reset{background:none;color:var(--text-light);border:1px solid var(--border);font-size:11px;padding:6px 12px;border-radius:4px}
+.btn-reset:hover{color:var(--error);border-color:var(--error)}
+
+/* ── Verification Panel ── */
+.verify-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;display:none;justify-content:flex-end}
+.verify-overlay.open{display:flex}
+.verify-panel{width:340px;background:var(--card);height:100%;box-shadow:-4px 0 24px rgba(0,0,0,.1);display:flex;flex-direction:column;animation:slideIn .2s ease}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.verify-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.verify-header h3{font-size:15px;font-weight:700}
+.verify-close{background:none;border:none;font-size:18px;color:var(--text-light);padding:4px}
+.verify-body{flex:1;overflow:auto;padding:16px}
+.verify-task{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:var(--radius);margin-bottom:8px;border:1px solid var(--border);transition:.15s}
+.verify-task.done{background:var(--success-bg);border-color:var(--success)}
+.verify-task.fail{background:var(--bg)}
+.verify-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.verify-task.done .verify-icon{background:var(--success);color:white}
+.verify-task.fail .verify-icon{background:var(--border);color:var(--text-light)}
+.verify-label{font-size:12px;font-weight:500;color:var(--text)}
+.verify-detail{font-size:11px;color:var(--text-mid);margin-top:2px}
+.verify-score{text-align:center;padding:20px;margin-top:8px}
+.verify-score-num{font-size:36px;font-weight:800;color:var(--primary)}
+.verify-score-label{font-size:12px;color:var(--text-mid)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:8px;font-size:13px;font-weight:500;color:white;z-index:200;animation:fadeUp .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.toast-success{background:var(--success)}
+.toast-error{background:var(--error)}
+.toast-info{background:var(--primary)}
+
+/* ── Submitted overlay ── */
+.submitted-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.submitted-overlay.open{display:flex}
+.submitted-icon{font-size:64px;margin-bottom:16px}
+.submitted-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px}
+.submitted-msg{font-size:14px;color:var(--text-mid);max-width:400px;line-height:1.6;margin-bottom:20px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">OB</div>
+      <div>
+        <div class="header-title">Sistema de Imputación de Horas</div>
+        <div class="header-subtitle">OnBoardingHub Corp — Departamento de Desarrollo</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn-verify" id="btnVerify" onclick="toggleVerify()">
+        <span id="verifyBtnIcon">☐</span> Verificar (<span id="verifyCount">0</span>/5)
+      </button>
+      <div class="user-badge">
+        <div class="user-avatar">NV</div>
+        <span class="user-name">Novato OnBoarding</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Week Bar -->
+  <div class="week-bar">
+    <div>
+      <span class="week-label" id="weekLabel">Semana del 21 al 25 de Abril, 2026</span>
+      <span class="status-pill status-draft" id="statusPill">● Borrador</span>
+    </div>
+    <div class="week-total">Total semana: <strong id="weekTotal">0h</strong> / 40h</div>
+  </div>
+
+  <!-- Timesheet -->
+  <div class="main" id="mainArea">
+    <!-- Days injected by JS -->
+  </div>
+
+  <!-- Footer -->
+  <div class="footer" id="footerBar">
+    <button class="btn btn-reset" onclick="resetAll()">Reiniciar todo</button>
+    <div class="footer-actions">
+      <button class="btn btn-save" onclick="saveDraft()">💾 Guardar Borrador</button>
+      <button class="btn btn-submit" id="btnSubmit" onclick="submitReady()">📤 Enviar a PM (Ready)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Verify Panel -->
+<div class="verify-overlay" id="verifyOverlay" onclick="closeVerifyOutside(event)">
+  <div class="verify-panel">
+    <div class="verify-header">
+      <h3>✅ Verificación de Tareas</h3>
+      <button class="verify-close" onclick="toggleVerify()">✕</button>
+    </div>
+    <div class="verify-body" id="verifyBody"></div>
+  </div>
+</div>
+
+<!-- Submitted overlay -->
+<div class="submitted-overlay" id="submittedOverlay">
+  <div class="submitted-icon">📨</div>
+  <div class="submitted-title">Parte de horas enviado</div>
+  <div class="submitted-msg">Tu parte semanal ha sido enviado correctamente al Project Manager para su aprobación. Recibirás una notificación cuando sea revisado.</div>
+  <button class="btn btn-save" onclick="undoSubmit()" style="margin-top:4px">← Volver al parte (editar)</button>
+</div>
+
+<script>
+// ── Data ──
+const WORK_ORDERS = [
+  { id: 'WO-001', name: 'Portal Web Corporativo — Fase 2', pm: 'Ana García' },
+  { id: 'WO-002', name: 'App Móvil de Ventas', pm: 'Carlos López' },
+  { id: 'WO-003', name: 'Migración Cloud AWS', pm: 'Elena Torres' },
+  { id: 'WO-004', name: 'Soporte IT Interno', pm: 'David Ruiz' },
+  { id: 'WO-005', name: 'Formación y OnBoarding', pm: 'Laura Martín' },
+];
+
+const DAYS = [
+  { key: 'mon', name: 'Lunes', date: '21/04/2026' },
+  { key: 'tue', name: 'Martes', date: '22/04/2026' },
+  { key: 'wed', name: 'Miércoles', date: '23/04/2026' },
+  { key: 'thu', name: 'Jueves', date: '24/04/2026' },
+  { key: 'fri', name: 'Viernes', date: '25/04/2026' },
+];
+
+let state = {
+  entries: {},  // { mon: [{wo:'', hours:0, desc:''}], ... }
+  status: 'draft', // draft | ready | submitted
+};
+
+DAYS.forEach(d => { state.entries[d.key] = []; });
+
+// ── Render ──
+function render() {
+  const main = document.getElementById('mainArea');
+  main.innerHTML = '';
+
+  DAYS.forEach(day => {
+    const entries = state.entries[day.key];
+    const totalH = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+    const hoursClass = entries.length === 0 ? 'empty' : (totalH === 8 ? 'ok' : 'warn');
+
+    let html = `<div class="day-card">
+      <div class="day-header">
+        <div>
+          <span class="day-name">${day.name}</span>
+          <span class="day-date">${day.date}</span>
+        </div>
+        <span class="day-hours ${hoursClass}">${entries.length === 0 ? 'Sin entradas' : totalH + 'h / 8h'}</span>
+      </div>
+      <div class="entries">`;
+
+    if (entries.length === 0) {
+      html += `<div class="no-entries">No hay horas imputadas para este día</div>`;
+    } else {
+      entries.forEach((entry, i) => {
+        html += `<div class="entry-row">
+          <select onchange="updateEntry('${day.key}',${i},'wo',this.value)" ${state.status !== 'draft' ? 'disabled' : ''}>
+            <option value="">— Selecciona WO —</option>
+            ${WORK_ORDERS.map(wo => `<option value="${wo.id}" ${entry.wo === wo.id ? 'selected' : ''}>${wo.id}: ${wo.name}</option>`).join('')}
+          </select>
+          <input type="number" min="0.5" max="8" step="0.5" value="${entry.hours || ''}"
+            placeholder="Horas"
+            onchange="updateEntry('${day.key}',${i},'hours',this.value)"
+            ${state.status !== 'draft' ? 'disabled' : ''} />
+          <textarea rows="1" placeholder="Descripción de la actividad..."
+            onchange="updateEntry('${day.key}',${i},'desc',this.value)"
+            ${state.status !== 'draft' ? 'disabled' : ''}>${entry.desc || ''}</textarea>
+          ${state.status === 'draft' ? `<button class="btn-remove" onclick="removeEntry('${day.key}',${i})" title="Eliminar">✕</button>` : '<div></div>'}
+        </div>`;
+      });
+    }
+
+    if (state.status === 'draft') {
+      html += `<button class="btn-add" onclick="addEntry('${day.key}')">+ Añadir entrada</button>`;
+    }
+
+    html += `</div></div>`;
+    main.innerHTML += html;
+  });
+
+  // Update week total
+  let weekTotal = 0;
+  DAYS.forEach(d => { weekTotal += state.entries[d.key].reduce((s, e) => s + (parseFloat(e.hours) || 0), 0); });
+  document.getElementById('weekTotal').textContent = weekTotal + 'h';
+
+  // Update status pill
+  const pill = document.getElementById('statusPill');
+  if (state.status === 'draft') {
+    pill.className = 'status-pill status-draft';
+    pill.textContent = '● Borrador';
+  } else if (state.status === 'ready') {
+    pill.className = 'status-pill status-ready';
+    pill.textContent = '● Ready — Pendiente de aprobación';
+  } else {
+    pill.className = 'status-pill status-submitted';
+    pill.textContent = '✓ Enviado';
+  }
+
+  // Footer button state
+  const btnSubmit = document.getElementById('btnSubmit');
+  if (state.status === 'draft') {
+    btnSubmit.textContent = '📤 Enviar a PM (Ready)';
+    btnSubmit.disabled = false;
+    btnSubmit.onclick = submitReady;
+  } else if (state.status === 'ready') {
+    btnSubmit.textContent = '✏️ Volver a Borrador';
+    btnSubmit.disabled = false;
+    btnSubmit.onclick = backToDraft;
+  }
+
+  document.getElementById('submittedOverlay').className = state.status === 'submitted' ? 'submitted-overlay open' : 'submitted-overlay';
+
+  updateVerification();
+}
+
+// ── Actions ──
+function addEntry(dayKey) {
+  state.entries[dayKey].push({ wo: '', hours: '', desc: '' });
+  render();
+}
+
+function removeEntry(dayKey, index) {
+  state.entries[dayKey].splice(index, 1);
+  render();
+}
+
+function updateEntry(dayKey, index, field, value) {
+  state.entries[dayKey][index][field] = value;
+  updateVerification();
+  // Update day hours without full re-render
+  const entries = state.entries[dayKey];
+  const totalH = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+  let weekTotal = 0;
+  DAYS.forEach(d => { weekTotal += state.entries[d.key].reduce((s, e) => s + (parseFloat(e.hours) || 0), 0); });
+  document.getElementById('weekTotal').textContent = weekTotal + 'h';
+}
+
+function saveDraft() {
+  toast('Borrador guardado correctamente', 'success');
+}
+
+function submitReady() {
+  // Validate
+  const checks = getVerification();
+  if (!checks.allDaysHaveEntries) { toast('Todos los días deben tener al menos una entrada', 'error'); return; }
+  if (!checks.allEntriesHaveWO) { toast('Todas las entradas necesitan una Work Order', 'error'); return; }
+  if (!checks.allEntriesHaveDesc) { toast('Todas las entradas necesitan una descripción', 'error'); return; }
+  if (!checks.allDays8h) { toast('Cada día debe sumar exactamente 8 horas', 'error'); return; }
+
+  state.status = 'submitted';
+  render();
+  toast('¡Parte enviado al Project Manager! 🎉', 'success');
+}
+
+function backToDraft() {
+  state.status = 'draft';
+  render();
+  toast('Parte devuelto a borrador', 'info');
+}
+
+function undoSubmit() {
+  state.status = 'draft';
+  render();
+}
+
+function resetAll() {
+  if (!confirm('¿Reiniciar todo el parte de horas? Se perderán todas las entradas.')) return;
+  DAYS.forEach(d => { state.entries[d.key] = []; });
+  state.status = 'draft';
+  render();
+  toast('Parte reiniciado', 'info');
+}
+
+// ── Verification ──
+function getVerification() {
+  const allDaysHaveEntries = DAYS.every(d => state.entries[d.key].length > 0);
+  const allEntriesHaveWO = DAYS.every(d => state.entries[d.key].every(e => e.wo));
+  const allDays8h = DAYS.every(d => {
+    const total = state.entries[d.key].reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+    return state.entries[d.key].length > 0 && total === 8;
+  });
+  const allEntriesHaveDesc = DAYS.every(d => state.entries[d.key].every(e => e.desc && e.desc.trim().length > 0));
+  const isSubmitted = state.status === 'submitted';
+
+  return { allDaysHaveEntries, allEntriesHaveWO, allDays8h, allEntriesHaveDesc, isSubmitted };
+}
+
+function updateVerification() {
+  const checks = getVerification();
+  const tasks = [
+    { done: checks.allDaysHaveEntries, label: 'Todos los días tienen entradas', detail: '5 días laborables con al menos una línea cada uno' },
+    { done: checks.allEntriesHaveWO, label: 'Work Orders asignadas', detail: 'Cada entrada tiene una WO seleccionada' },
+    { done: checks.allDays8h, label: '8 horas por día', detail: 'Cada día suma exactamente 8 horas' },
+    { done: checks.allEntriesHaveDesc, label: 'Descripciones completas', detail: 'Cada entrada tiene una descripción de actividad' },
+    { done: checks.isSubmitted, label: 'Parte enviado', detail: 'Parte marcado como Ready y enviado al PM' },
+  ];
+
+  const doneCount = tasks.filter(t => t.done).length;
+  document.getElementById('verifyCount').textContent = doneCount;
+
+  const btn = document.getElementById('btnVerify');
+  btn.className = doneCount === 5 ? 'btn-verify has-all' : 'btn-verify';
+  document.getElementById('verifyBtnIcon').textContent = doneCount === 5 ? '✅' : '☐';
+
+  const body = document.getElementById('verifyBody');
+  body.innerHTML = tasks.map(t => `
+    <div class="verify-task ${t.done ? 'done' : 'fail'}">
+      <div class="verify-icon">${t.done ? '✓' : '○'}</div>
+      <div>
+        <div class="verify-label">${t.label}</div>
+        <div class="verify-detail">${t.detail}</div>
+      </div>
+    </div>
+  `).join('') + `
+    <div class="verify-score">
+      <div class="verify-score-num">${doneCount}/5</div>
+      <div class="verify-score-label">${doneCount === 5 ? '¡Todas las tareas completadas! 🎉' : 'Tareas completadas'}</div>
+    </div>
+  `;
+}
+
+function toggleVerify() {
+  const o = document.getElementById('verifyOverlay');
+  o.classList.toggle('open');
+}
+
+function closeVerifyOutside(e) {
+  if (e.target === document.getElementById('verifyOverlay')) toggleVerify();
+}
+
+// ── Toast ──
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>
