@@ -1,0 +1,8 @@
+{
+  "title": "Entorno Fullstack — Node.js & Python",
+  "description": "Potente entorno de desarrollo interactivo. Incluye Node.js, NPM, Python 3, PIP y SQLite3. Configurado para desarrollar aplicaciones backend o ejecutar scripts avanzados de forma segura.",
+  "objectives": "1. Iniciar un proyecto con \"npm init\".\n2. Instalar una dependencia.\n3. Ejecutar un script para probar la red.",
+  "difficulty": "INTERMEDIATE",
+  "innerPort": 7681,
+  "xpReward": 100
+}

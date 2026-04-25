@@ -23,16 +23,20 @@ export const getBoxById = async (req: AuthRequest, res: Response): Promise<void>
 
 export const createBox = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Solo los administradores pueden crear boxes' });
       return;
     }
-    const { title, description, objectives, dockerImage, difficulty, companyId } = req.body;
-    if (!title || !description || !objectives || !dockerImage || !companyId) {
+    const { title, description, objectives, guide, dockerImage, innerPort, difficulty, companyId } = req.body;
+    if (!title || !description || !objectives || !dockerImage) {
       res.status(400).json({ message: 'Faltan campos obligatorios' });
       return;
     }
-    const box = await boxService.createBox({ title, description, objectives, dockerImage, difficulty, companyId });
+    if (req.userRole === 'ADMIN' && !companyId) {
+      res.status(400).json({ message: 'companyId es obligatorio para administradores de empresa' });
+      return;
+    }
+    const box = await boxService.createBox({ title, description, objectives, guide, dockerImage, innerPort, difficulty, companyId });
     res.status(201).json(box);
   } catch (err: any) {
     res.status(400).json({ message: err.message });
@@ -41,7 +45,7 @@ export const createBox = async (req: AuthRequest, res: Response): Promise<void> 
 
 export const getAllBoxes = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }
@@ -54,7 +58,7 @@ export const getAllBoxes = async (req: AuthRequest, res: Response): Promise<void
 
 export const deleteBox = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }

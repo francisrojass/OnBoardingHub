@@ -4,7 +4,7 @@ import { AuthRequest } from '../../middlewares/verifyToken';
 
 export const getCompanies = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }
@@ -17,7 +17,7 @@ export const getCompanies = async (req: AuthRequest, res: Response): Promise<voi
 
 export const assignBox = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }
@@ -36,7 +36,7 @@ export const assignBox = async (req: AuthRequest, res: Response): Promise<void> 
 
 export const removeBox = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }
@@ -51,7 +51,7 @@ export const removeBox = async (req: AuthRequest, res: Response): Promise<void> 
 
 export const deleteCompany = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (req.userRole !== 'ADMIN') {
+    if (req.userRole !== 'ADMIN' && req.userRole !== 'SUPER_ADMIN') {
       res.status(403).json({ message: 'Acceso denegado' });
       return;
     }

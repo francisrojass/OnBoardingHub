@@ -12,6 +12,7 @@ import adminRoutes from './modules/admin/admin.routes';
 import progressRoutes from './modules/progress/progress.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
 import reportRoutes from './modules/reports/report.routes';
+import templateRoutes from './modules/sandbox-templates/template.routes';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/sandbox-templates', templateRoutes);
 
 app.use(errorHandler);
 

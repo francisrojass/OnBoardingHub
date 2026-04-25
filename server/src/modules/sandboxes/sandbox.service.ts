@@ -1,13 +1,19 @@
 import Docker from 'dockerode';
+import path from 'path';
+import fs from 'fs';
 import { prisma } from '../../config/database';
 import { ENV } from '../../config/env';
 import { logger } from '../../utils/logger';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const SANDBOXES_DIR = path.resolve(__dirname, '../../../../docker/sandboxes');
+
+// Tracks images currently being built to prevent concurrent duplicate builds
+const buildsInProgress = new Map<string, Promise<void>>();
 
 const getAvailablePort = async (): Promise<number> => {
   const usedPorts = await prisma.sandbox.findMany({
-    where: { status: 'RUNNING' },
+    where: { status: { in: ['RUNNING', 'PENDING'] } },
     select: { port: true },
   });
   const used = new Set(usedPorts.map((s) => s.port));
@@ -18,15 +24,112 @@ const getAvailablePort = async (): Promise<number> => {
   throw new Error('No hay puertos disponibles');
 };
 
+const imageExists = async (imageName: string): Promise<boolean> => {
+  try {
+    // getImage().inspect() is more reliable than listImages() for freshly built images
+    await docker.getImage(`${imageName}:latest`).inspect();
+    return true;
+  } catch {
+    try {
+      await docker.getImage(imageName).inspect();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
+const buildImageFromSandboxes = async (imageName: string): Promise<void> => {
+  // imageName format: "onboardinghub/<folder-name>" — extract folder name
+  const parts = imageName.split('/');
+  const folderName = parts.length > 1 ? parts[parts.length - 1] : imageName;
+  const contextDir = path.join(SANDBOXES_DIR, folderName);
+  const dockerfilePath = path.join(contextDir, 'Dockerfile');
+
+  if (!fs.existsSync(dockerfilePath)) {
+    throw new Error(
+      `Imagen Docker "${imageName}" no encontrada y no hay Dockerfile en docker/sandboxes/${folderName}/. ` +
+      `Crea el Dockerfile o ejecuta: docker build -t ${imageName} docker/sandboxes/${folderName}/`
+    );
+  }
+
+  logger.info(`Imagen "${imageName}" no encontrada — construyendo desde docker/sandboxes/${folderName}/...`);
+
+  // Only include Dockerfile and non-json files in the build context (exclude metadata.json)
+  const contextFiles = fs.readdirSync(contextDir).filter(f => !f.endsWith('.json'));
+
+  const stream = await docker.buildImage(
+    { context: contextDir, src: contextFiles },
+    { t: imageName }
+  );
+
+  // Wait for build to finish
+  await new Promise<void>((resolve, reject) => {
+    let rejected = false;
+    docker.modem.followProgress(stream, (err: Error | null) => {
+      if (rejected) return;
+      if (err) {
+        rejected = true;
+        reject(new Error(`Error construyendo imagen "${imageName}": ${err.message}`));
+      } else {
+        resolve();
+      }
+    }, (event: any) => {
+      if (rejected) return;
+      if (event.stream) {
+        const line = event.stream.trim();
+        if (line) logger.info(`[build ${folderName}] ${line}`);
+      }
+      if (event.error) {
+        rejected = true;
+        logger.error(`[build ${folderName}] ERROR: ${event.error}`);
+        reject(new Error(`Error construyendo imagen: ${event.error}`));
+      }
+      if (event.errorDetail?.message) {
+        rejected = true;
+        logger.error(`[build ${folderName}] ERROR: ${event.errorDetail.message}`);
+        reject(new Error(`Error construyendo imagen: ${event.errorDetail.message}`));
+      }
+    });
+  });
+
+  // Post-build verification
+  if (!(await imageExists(imageName))) {
+    throw new Error(`Build de "${imageName}" terminó pero la imagen no se encuentra en Docker`);
+  }
+
+  logger.info(`Imagen "${imageName}" construida correctamente.`);
+};
+
+const ensureImageExists = async (imageName: string): Promise<void> => {
+  if (await imageExists(imageName)) return;
+
+  // If a build is already in progress for this image, wait for it instead of starting another
+  if (buildsInProgress.has(imageName)) {
+    logger.info(`Build de "${imageName}" ya en progreso — esperando...`);
+    await buildsInProgress.get(imageName);
+    return;
+  }
+
+  const buildPromise = buildImageFromSandboxes(imageName).finally(() => {
+    buildsInProgress.delete(imageName);
+  });
+  buildsInProgress.set(imageName, buildPromise);
+  await buildPromise;
+};
+
 export const launchSandbox = async (boxId: string, userId: string) => {
   const box = await prisma.box.findUnique({ where: { id: boxId } });
   if (!box) throw new Error('Box no encontrado');
 
-  // Guard: if user already has a RUNNING sandbox for this box, return it
+  // Guard: if user already has an active sandbox for this box, return it
   const existingSandbox = await prisma.sandbox.findFirst({
-    where: { userId, boxId, status: 'RUNNING' },
+    where: { userId, boxId, status: { in: ['RUNNING', 'PENDING'] } },
   });
-  if (existingSandbox) return existingSandbox;
+  if (existingSandbox) {
+    logger.info(`Sandbox ya existe para usuario ${userId} y box ${boxId} — estado: ${existingSandbox.status}`);
+    return existingSandbox;
+  }
 
   const port = await getAvailablePort();
   const innerPort = box.innerPort; // e.g. 7681 for ttyd
@@ -36,6 +139,8 @@ export const launchSandbox = async (boxId: string, userId: string) => {
   });
 
   try {
+    await ensureImageExists(box.dockerImage);
+
     const exposedPorts: Record<string, object> = { [`${innerPort}/tcp`]: {} };
     const portBindings: Record<string, Array<{ HostPort: string }>> = {
       [`${innerPort}/tcp`]: [{ HostPort: String(port) }],

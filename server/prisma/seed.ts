@@ -1,9 +1,8 @@
 /**
  * Seed script — OnBoardingHub
- * Crea la Box demo "Terminal Git" y la asigna a todas las empresas existentes.
+ * Sincroniza boxes desde las carpetas de sandbox y las asigna a todas las empresas.
  *
- * Uso: ts-node prisma/seed.ts
- *      o via: npm run prisma:seed
+ * Uso: npm run prisma:seed
  */
 
 import * as dotenv from 'dotenv';
@@ -12,62 +11,73 @@ dotenv.config();
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import fs from 'fs';
+import path from 'path';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const SANDBOXES_DIR = path.resolve(__dirname, '../../docker/sandboxes');
+
+interface SandboxMetadata {
+  title: string;
+  description: string;
+  objectives: string;
+  guide?: string;
+  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  innerPort: number;
+  xpReward: number;
+}
+
 async function main() {
   console.log('🌱  Iniciando seed...');
 
-  // ── 1. Crear (o reutilizar) las Boxes ─────────────────────────────────────
-  const BOXES = [
-    {
-      title: 'Terminal Sandbox — Ubuntu Básico',
-      description:
-        'Entorno de terminal aislado basado en Ubuntu. Contiene Git, Curl, Vim y Nano. ' +
-        'Ideal como primera toma de contacto con el flujo de trabajo de la empresa.',
-      objectives:
-        '1. Clonar un repositorio ficticio.\n' +
-        '2. Crear una rama de feature.\n' +
-        '3. Realizar un commit y lanzar una Pull Request simulada.',
-      dockerImage: 'onboardinghub/ubuntu-basic',
-      innerPort: 7681,
-      difficulty: 'BEGINNER' as const,
-    },
-    {
-      title: 'Entorno Fullstack — Node.js & Python',
-      description:
-        'Potente entorno de desarrollo interactivo. Incluye Node.js, NPM, Python 3, PIP y SQLite3. ' +
-        'Configurado para desarrollar aplicaciones backend o ejecutar scripts avanzados de forma segura.',
-      objectives:
-        '1. Iniciar un proyecto con "npm init".\n' +
-        '2. Instalar una dependencia.\n' +
-        '3. Ejecutar un script para probar la red.',
-      dockerImage: 'onboardinghub/fullstack-node-python',
-      innerPort: 7681,
-      difficulty: 'INTERMEDIATE' as const,
+  // ── 1. Sync boxes from docker/sandboxes/*/metadata.json ───────────────────
+  const entries = fs.readdirSync(SANDBOXES_DIR, { withFileTypes: true });
+  const boxes = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    const metaPath = path.join(SANDBOXES_DIR, entry.name, 'metadata.json');
+    const dockerfilePath = path.join(SANDBOXES_DIR, entry.name, 'Dockerfile');
+    if (!fs.existsSync(metaPath) || !fs.existsSync(dockerfilePath)) continue;
+
+    let metadata: SandboxMetadata;
+    try {
+      metadata = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    } catch {
+      console.log(`  ⚠️   metadata.json inválido en ${entry.name} — saltando`);
+      continue;
     }
-  ];
 
-  const createdBoxes = [];
+    const dockerImage = `onboardinghub/${entry.name}`;
+    const data = {
+      title: metadata.title,
+      description: metadata.description,
+      objectives: metadata.objectives,
+      guide: metadata.guide || null,
+      dockerImage,
+      innerPort: metadata.innerPort,
+      difficulty: metadata.difficulty,
+      xpReward: metadata.xpReward,
+    };
 
-  for (const boxData of BOXES) {
-    let box = await prisma.box.findFirst({
-      where: { dockerImage: boxData.dockerImage },
-    });
+    let box = await prisma.box.findFirst({ where: { dockerImage } });
 
     if (!box) {
-      box = await prisma.box.create({ data: boxData });
+      box = await prisma.box.create({ data });
       console.log(`  ✅  Box creada: "${box.title}" (id: ${box.id})`);
     } else {
-      box = await prisma.box.update({
-        where: { id: box.id },
-        data: { title: boxData.title, description: boxData.description, objectives: boxData.objectives, innerPort: boxData.innerPort, difficulty: boxData.difficulty },
-      });
-      console.log(`  ♻️   Box ya existía — actualizada: "${box.title}" (id: ${box.id})`);
+      box = await prisma.box.update({ where: { id: box.id }, data });
+      console.log(`  ♻️   Box actualizada: "${box.title}" (id: ${box.id})`);
     }
-    createdBoxes.push(box);
+    boxes.push(box);
+  }
+
+  if (boxes.length === 0) {
+    console.log('  ⚠️   No se encontraron templates con metadata.json en docker/sandboxes/');
   }
 
   // ── 2. Asignar las Boxes a TODAS las empresas ───────────────────────────────
@@ -77,7 +87,7 @@ async function main() {
     console.log('  ⚠️   No hay empresas en la BD. Registra un usuario primero y vuelve a correr el seed.');
   } else {
     for (const company of companies) {
-      for (const box of createdBoxes) {
+      for (const box of boxes) {
         const exists = await prisma.companyBox.findUnique({
           where: { companyId_boxId: { companyId: company.id, boxId: box.id } },
         });

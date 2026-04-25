@@ -37,6 +37,7 @@ model Box {
   title         String
   description   String
   objectives    String
+  guide         String?
   dockerImage   String
   innerPort     Int           @default(7681)
   difficulty    Difficulty    @default(BEGINNER)

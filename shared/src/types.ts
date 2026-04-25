@@ -9,6 +9,7 @@ export interface Box {
   id: string
   title: string
   description?: string
+  guide?: string
   dockerImage: string
 }
 

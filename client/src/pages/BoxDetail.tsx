@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
@@ -11,9 +11,57 @@ const ILLUSTRATIONS = [
   'box-illustration-4',
 ]
 
+// Lightweight markdown to HTML renderer (no external dependency)
+function renderMarkdown(md: string): string {
+  let html = md
+    // Escape HTML entities to prevent XSS
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // Code blocks (```...```)
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, _lang, code) => {
+    return `<pre class="guide-code-block"><code>${code.trim()}</code></pre>`
+  })
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code class="guide-inline-code">$1</code>')
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3 class="guide-h3">$1</h3>')
+  html = html.replace(/^## (.+)$/gm, '<h2 class="guide-h2">$1</h2>')
+  html = html.replace(/^# (.+)$/gm, '<h1 class="guide-h1">$1</h1>')
+
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr class="guide-hr" />')
+
+  // Bold and italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+
+  // Blockquotes
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="guide-blockquote">$1</blockquote>')
+
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li class="guide-li">$1</li>')
+  html = html.replace(/(<li.*<\/li>\n?)+/g, (match) => `<ul class="guide-ul">${match}</ul>`)
+
+  // Paragraphs (lines that aren't already tags)
+  html = html.replace(/^(?!<[a-z/])((?!^\s*$).+)$/gm, (match) => {
+    if (match.trim() === '') return match
+    return `<p class="guide-p">${match}</p>`
+  })
+
+  // Clean up empty lines
+  html = html.replace(/\n{3,}/g, '\n\n')
+
+  return html
+}
+
 export default function BoxDetail() {
   const { id } = useParams()
   const queryClient = useQueryClient()
+  const [guideOpen, setGuideOpen] = useState(true)
 
   const { data, isLoading } = useQuery(
     ['box', id],
@@ -139,29 +187,93 @@ export default function BoxDetail() {
             )}
           </div>
 
-          {/* Terminal Section */}
+          {/* Terminal + Guide Section */}
           {activeSandbox && (
-            <div className="profile-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '600px', border: '1px solid #1e293b' }}>
-              <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', color: 'white' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.02em' }}>Terminal Interactiva</span>
+            <>
+              {/* Guide + Terminal side by side when guide exists */}
+              {data.guide ? (
+                <div style={{ display: 'grid', gridTemplateColumns: guideOpen ? '1fr 1.3fr' : '0fr 1fr', gap: 0, height: '620px', borderRadius: 12, overflow: 'hidden', border: '1px solid #1e293b', transition: 'grid-template-columns 0.3s ease' }}>
+                  {/* Guide Panel */}
+                  <div style={{ 
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: '#f8fafc',
+                    borderRight: guideOpen ? '1px solid #e2e8f0' : 'none',
+                    width: guideOpen ? 'auto' : 0,
+                    minWidth: guideOpen ? 0 : 0,
+                  }}>
+                    <div style={{ padding: '12px 16px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <svg width="16" height="16" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>Guía de Tareas</span>
+                    </div>
+                    <div 
+                      className="guide-content"
+                      style={{ flex: 1, overflow: 'auto', padding: '20px 18px', fontSize: 13, lineHeight: 1.75, color: '#334155' }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(data.guide) }}
+                    />
+                  </div>
+
+                  {/* Terminal Panel */}
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', color: 'white', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <button
+                          onClick={() => setGuideOpen(g => !g)}
+                          title={guideOpen ? 'Ocultar guía' : 'Mostrar guía'}
+                          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 6px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            {guideOpen
+                              ? <path d="M11 19l-7-7 7-7"/>
+                              : <path d="M13 5l7 7-7 7"/>
+                            }
+                          </svg>
+                        </button>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.02em' }}>Terminal Interactiva</span>
+                      </div>
+                      <button 
+                        onClick={() => stop.mutate(activeSandbox.id)}
+                        disabled={stop.isLoading}
+                        className="btn-secondary" 
+                        style={{ fontSize: 11, padding: '4px 10px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                      >
+                        {stop.isLoading ? 'Deteniendo...' : 'Cerrar Terminal'}
+                      </button>
+                    </div>
+                    <iframe 
+                      src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                      style={{ flex: 1, border: 'none', background: '#000' }}
+                      title="Terminal"
+                    />
+                  </div>
                 </div>
-                <button 
-                  onClick={() => stop.mutate(activeSandbox.id)}
-                  disabled={stop.isLoading}
-                  className="btn-secondary" 
-                  style={{ fontSize: 11, padding: '4px 10px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
-                >
-                  {stop.isLoading ? 'Deteniendo...' : 'Cerrar Terminal'}
-                </button>
-              </div>
-              <iframe 
-                src={`http://${window.location.hostname}:${activeSandbox.port}`}
-                style={{ flex: 1, border: 'none', background: '#000' }}
-                title="Terminal"
-              />
-            </div>
+              ) : (
+                /* Terminal only (no guide) */
+                <div className="profile-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '600px', border: '1px solid #1e293b' }}>
+                  <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', color: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.02em' }}>Terminal Interactiva</span>
+                    </div>
+                    <button 
+                      onClick={() => stop.mutate(activeSandbox.id)}
+                      disabled={stop.isLoading}
+                      className="btn-secondary" 
+                      style={{ fontSize: 11, padding: '4px 10px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                    >
+                      {stop.isLoading ? 'Deteniendo...' : 'Cerrar Terminal'}
+                    </button>
+                  </div>
+                  <iframe 
+                    src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                    style={{ flex: 1, border: 'none', background: '#000' }}
+                    title="Terminal"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
 

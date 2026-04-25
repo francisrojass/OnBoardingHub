@@ -1547,3 +1547,42 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* ── Guide Markdown Styles ── */
+.guide-content { font-family: 'Inter', -apple-system, sans-serif; }
+.guide-content .guide-h1 { font-size: 20px; font-weight: 800; color: #1e293b; margin: 24px 0 12px; letter-spacing: -0.3px; }
+.guide-content .guide-h2 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 20px 0 10px; }
+.guide-content .guide-h3 { font-size: 14px; font-weight: 700; color: #334155; margin: 16px 0 8px; }
+.guide-content .guide-p { margin: 6px 0; }
+.guide-content .guide-hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+.guide-content .guide-code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  margin: 10px 0;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+.guide-content .guide-inline-code {
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+.guide-content .guide-blockquote {
+  border-left: 3px solid #3b82f6;
+  background: #eff6ff;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  margin: 10px 0;
+  color: #1e40af;
+  font-size: 12.5px;
+}
+.guide-content .guide-ul { list-style: none; margin: 8px 0; padding-left: 0; }
+.guide-content .guide-li { padding: 2px 0 2px 16px; position: relative; }
+.guide-content .guide-li::before { content: '•'; position: absolute; left: 4px; color: #3b82f6; font-weight: bold; }
