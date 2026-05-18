@@ -218,39 +218,46 @@ export default function LearningHub() {
                     {box.description?.slice(0, 80)}{box.description?.length > 80 ? '...' : ''}
                   </p>
 
-                  <div className="box-card-bottom">
-                    <div className="box-xp">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                      </svg>
-                      {box.xpReward ?? 100} XP
+                  <div className="box-card-bottom" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="box-xp" style={{ margin: 0, flex: 1 }}>
+                        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        {box.xpReward ?? 100} XP
+                      </div>
+                      {isCompleted && (
+                        <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>✓ Completado</span>
+                      )}
                     </div>
-                    {isCompleted ? (
-                      <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>✓ Completado</span>
-                    ) : (
-                      <button
-                        className="box-action-btn"
-                        style={{ background: 'var(--primary)', color: 'white', border: 'none', fontSize: 11 }}
-                        onClick={() => completeBox.mutate(box.id)}
-                        disabled={completeBox.isLoading}
-                      >
-                        Marcar completo
-                      </button>
-                    )}
-                    {isRunning ? (
-                      <button className="box-action-btn running">
-                        <svg width="8" height="8" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
-                        Live
-                      </button>
-                    ) : (
-                      <button
-                        className="box-action-btn launch"
-                        onClick={() => launch.mutate(box.id)}
-                        disabled={launch.isLoading}
-                      >
-                        ▶ Launch
-                      </button>
-                    )}
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {!isCompleted && (
+                        <button
+                          className="btn-secondary"
+                          style={{ flex: 1, padding: '0', fontSize: '11px', height: '30px', display: 'flex', justifyContent: 'center' }}
+                          onClick={() => completeBox.mutate(box.id)}
+                          disabled={completeBox.isLoading}
+                        >
+                          ✓ Marcar completo
+                        </button>
+                      )}
+                      {isRunning ? (
+                        <button className="box-action-btn running" style={{ flex: 1, padding: '0', height: '30px', display: 'flex', justifyContent: 'center', margin: 0, width: '100%' }}>
+                          <svg width="8" height="8" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                          Live
+                        </button>
+                      ) : (
+                        <button
+                          className="box-action-btn launch"
+                          style={{ flex: 1, padding: '0', height: '30px', display: 'flex', justifyContent: 'center', margin: 0, width: '100%' }}
+                          onClick={() => launch.mutate(box.id)}
+                          disabled={launch.isLoading}
+                        >
+                          ▶ Launch
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

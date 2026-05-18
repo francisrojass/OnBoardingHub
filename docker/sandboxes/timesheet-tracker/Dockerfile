@@ -1,11 +1,10 @@
-FROM onboardinghub/ubuntu-basic
-
-RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
+FROM python:3-slim
 
 COPY index.html /opt/app/index.html
+COPY serve.py /opt/app/serve.py
 
 WORKDIR /opt/app
 EXPOSE 8080
 
 ENTRYPOINT []
-CMD ["python3", "-m", "http.server", "8080", "--bind", "0.0.0.0"]
+CMD ["python3", "serve.py"]

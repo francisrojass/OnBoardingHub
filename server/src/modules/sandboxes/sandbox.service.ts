@@ -11,7 +11,40 @@ const SANDBOXES_DIR = path.resolve(__dirname, '../../../../docker/sandboxes');
 // Tracks images currently being built to prevent concurrent duplicate builds
 const buildsInProgress = new Map<string, Promise<void>>();
 
+/**
+ * Reconcile DB state with Docker reality: mark ghost sandboxes (DB says RUNNING
+ * but container is dead) as STOPPED so their ports are freed.
+ */
+const reconcileOrphanedSandboxes = async (): Promise<void> => {
+  const runningSandboxes = await prisma.sandbox.findMany({
+    where: { status: { in: ['RUNNING', 'PENDING'] } },
+  });
+
+  for (const sb of runningSandboxes) {
+    if (!sb.containerId) {
+      // PENDING without container for too long — mark as ERROR
+      await prisma.sandbox.update({ where: { id: sb.id }, data: { status: 'ERROR' } });
+      logger.info(`Orphan sandbox ${sb.id} (no container) marcado como ERROR`);
+      continue;
+    }
+    try {
+      const info = await docker.getContainer(sb.containerId).inspect();
+      if (!info.State.Running) {
+        await prisma.sandbox.update({ where: { id: sb.id }, data: { status: 'STOPPED', stoppedAt: new Date() } });
+        logger.info(`Orphan sandbox ${sb.id} (container stopped) reconciliado`);
+      }
+    } catch {
+      // Container doesn't exist at all
+      await prisma.sandbox.update({ where: { id: sb.id }, data: { status: 'STOPPED', stoppedAt: new Date() } });
+      logger.info(`Orphan sandbox ${sb.id} (container not found) reconciliado`);
+    }
+  }
+};
+
 const getAvailablePort = async (): Promise<number> => {
+  // Reconcile orphans before allocating to avoid phantom port reservations
+  await reconcileOrphanedSandboxes();
+
   const usedPorts = await prisma.sandbox.findMany({
     where: { status: { in: ['RUNNING', 'PENDING'] } },
     select: { port: true },
@@ -129,6 +162,31 @@ export const launchSandbox = async (boxId: string, userId: string) => {
   if (existingSandbox) {
     logger.info(`Sandbox ya existe para usuario ${userId} y box ${boxId} — estado: ${existingSandbox.status}`);
     return existingSandbox;
+  }
+
+  // Stop any other RUNNING sandboxes for this user (one sandbox at a time policy)
+  const otherRunning = await prisma.sandbox.findMany({
+    where: { userId, status: 'RUNNING', boxId: { not: boxId } },
+  });
+  for (const other of otherRunning) {
+    try {
+      if (other.containerId) {
+        const c = docker.getContainer(other.containerId);
+        await c.stop();
+        await c.remove();
+      }
+      await prisma.sandbox.update({
+        where: { id: other.id },
+        data: { status: 'STOPPED', stoppedAt: new Date() },
+      });
+      logger.info(`Auto-stopped sandbox ${other.id} (box ${other.boxId}) para liberar recursos`);
+    } catch (err: any) {
+      logger.warn(`Error auto-stopping sandbox ${other.id}: ${err.message}`);
+      await prisma.sandbox.update({
+        where: { id: other.id },
+        data: { status: 'STOPPED', stoppedAt: new Date() },
+      });
+    }
   }
 
   const port = await getAvailablePort();

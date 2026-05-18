@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AuthContext } from '../context/AuthContext'
 import api from '../services/api'
@@ -14,6 +14,8 @@ interface NewBoxForm {
   objectives: string;
   guide: string;
   dockerImage: string;
+  dockerfile: string;
+  metadataJson: string;
   innerPort: number;
   difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 }
@@ -25,7 +27,7 @@ interface NewTemplateForm {
 
 const EMPTY_BOX_FORM: NewBoxForm = {
   title: '', description: '', objectives: '', guide: '',
-  dockerImage: '', innerPort: 7681, difficulty: 'BEGINNER',
+  dockerImage: '', dockerfile: '', metadataJson: '', innerPort: 7681, difficulty: 'BEGINNER',
 };
 
 const EMPTY_TEMPLATE_FORM: NewTemplateForm = {
@@ -36,8 +38,10 @@ const EMPTY_TEMPLATE_FORM: NewTemplateForm = {
 export default function Admin() {
   const auth = useContext(AuthContext)
   const queryClient = useQueryClient()
+  const location = useLocation()
   
-  const [view, setView] = useState<PanelView>('main')
+  const initialView = (location.state as any)?.view === 'new-box' ? 'new-box' : 'main'
+  const [view, setView] = useState<PanelView>(initialView as PanelView)
   const [boxForm, setBoxForm] = useState<NewBoxForm>(EMPTY_BOX_FORM)
   const [templateForm, setTemplateForm] = useState<NewTemplateForm>(EMPTY_TEMPLATE_FORM)
   const [formError, setFormError] = useState<string | null>(null)
@@ -105,9 +109,37 @@ export default function Admin() {
   })
 
   const createBoxMutation = useMutation({
-    mutationFn: (data: NewBoxForm) => api.post('/boxes', data),
+    mutationFn: async (data: NewBoxForm) => {
+      let dockerImage = data.dockerImage
+
+      // If dockerfile provided, create the template first
+      if (data.dockerfile.trim()) {
+        const templateName = data.title
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+        const res = await api.post('/sandbox-templates', {
+          name: templateName,
+          dockerfile: data.dockerfile,
+          metadata: data.metadataJson.trim() ? JSON.parse(data.metadataJson) : undefined,
+        })
+        dockerImage = res.data.dockerImage || `onboardinghub/${templateName}`
+      }
+
+      return api.post('/boxes', {
+        title: data.title,
+        description: data.description,
+        objectives: data.objectives,
+        guide: data.guide,
+        dockerImage,
+        innerPort: data.innerPort,
+        difficulty: data.difficulty,
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boxes-all'] })
+      queryClient.invalidateQueries({ queryKey: ['sandbox-templates'] })
       setBoxForm(EMPTY_BOX_FORM)
       setFormError(null)
       setView('main')
@@ -169,7 +201,7 @@ export default function Admin() {
     }
   }
 
-  const isMutatingGlobalInfo = deleteBoxMutation.isPending || deleteCompanyMutation.isPending;
+  const isMutatingGlobalInfo = deleteBoxMutation.isLoading || deleteCompanyMutation.isLoading;
 
   if (loadingCompanies || loadingBoxes) {
     return (
@@ -242,10 +274,10 @@ export default function Admin() {
                   }
                   createTemplateMutation.mutate(templateForm)
                 }}
-                disabled={createTemplateMutation.isPending}
+                disabled={createTemplateMutation.isLoading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createTemplateMutation.isPending ? 'Creando...' : 'Crear Imagen'}
+                {createTemplateMutation.isLoading ? 'Creando...' : 'Crear Imagen'}
               </button>
             </div>
           </div>
@@ -316,6 +348,34 @@ export default function Admin() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">Se muestra como panel lateral junto a la terminal interactiva</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dockerfile <span className="text-gray-400 font-normal">(opcional si seleccionas template existente)</span>
+              </label>
+              <textarea
+                value={boxForm.dockerfile}
+                onChange={e => setBoxForm({ ...boxForm, dockerfile: e.target.value })}
+                rows={10}
+                placeholder="FROM ubuntu:22.04&#10;&#10;RUN apt-get update && apt-get install -y ...&#10;&#10;EXPOSE 7681&#10;ENTRYPOINT [&quot;ttyd&quot;, &quot;-p&quot;, &quot;7681&quot;, &quot;-W&quot;, &quot;bash&quot;]"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Si proporcionas un Dockerfile, se creará automáticamente la imagen de sandbox</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                metadata.json <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <textarea
+                value={boxForm.metadataJson}
+                onChange={e => setBoxForm({ ...boxForm, metadataJson: e.target.value })}
+                rows={6}
+                placeholder='{"title": "Mi Sandbox", "description": "...", "objectives": "...", "difficulty": "INTERMEDIATE", "innerPort": 7681, "xpReward": 150}'
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Configuración JSON del template. Se guarda junto al Dockerfile.</p>
             </div>
 
             <div>
@@ -422,17 +482,18 @@ export default function Admin() {
               </button>
               <button
                 onClick={() => {
-                  if (!boxForm.title.trim() || !boxForm.description.trim() || !boxForm.objectives.trim() || !boxForm.dockerImage.trim()) {
-                    setFormError('Todos los campos son obligatorios')
+                  const hasImage = boxForm.dockerImage.trim() || boxForm.dockerfile.trim()
+                  if (!boxForm.title.trim() || !boxForm.description.trim() || !boxForm.objectives.trim() || !hasImage) {
+                    setFormError('Título, descripción, objetivos y al menos una imagen Docker o Dockerfile son obligatorios')
                     return
                   }
                   setFormError(null)
                   createBoxMutation.mutate(boxForm)
                 }}
-                disabled={createBoxMutation.isPending}
+                disabled={createBoxMutation.isLoading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createBoxMutation.isPending ? 'Creando...' : 'Añadir al Catálogo'}
+                {createBoxMutation.isLoading ? 'Creando...' : 'Añadir al Catálogo'}
               </button>
             </div>
           </div>
@@ -507,7 +568,7 @@ export default function Admin() {
           </div>
 
           <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Acceso a Empresa & Peligro</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Acceso a Empresas</h2>
             <div className="space-y-6">
               {companies?.map((c: any) => {
                 const assignedBoxIds = new Set(c.companyBoxes.map((cb: any) => cb.boxId))
@@ -570,12 +631,12 @@ export default function Admin() {
             <p className="text-sm text-gray-500">Templates detectados automáticamente desde <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">docker/sandboxes/</code></p>
             <button
               onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
+              disabled={syncMutation.isLoading}
               className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-1"
               title="Sincronizar templates con la base de datos"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              {syncMutation.isPending ? 'Sincronizando...' : 'Sync DB'}
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${syncMutation.isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              {syncMutation.isLoading ? 'Sincronizando...' : 'Sync DB'}
             </button>
           </div>
           {loadingTemplates ? (

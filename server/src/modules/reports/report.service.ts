@@ -6,6 +6,58 @@ const getAdminCompanyId = async (adminUserId: string): Promise<string> => {
   return user.companyId;
 };
 
+export const getTimesheetReports = async (adminUserId: string) => {
+  const companyId = await getAdminCompanyId(adminUserId);
+
+  return prisma.timesheetReport.findMany({
+    where: { user: { companyId } },
+    include: {
+      user: { select: { id: true, name: true, email: true, avatar: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+export const updateTimesheetStatus = async (
+  adminUserId: string,
+  reportId: string,
+  status: 'APPROVED' | 'REJECTED'
+) => {
+  const companyId = await getAdminCompanyId(adminUserId);
+
+  const report = await prisma.timesheetReport.findFirst({
+    where: { id: reportId },
+    include: { user: { select: { id: true, companyId: true, name: true } } },
+  });
+  if (!report || report.user.companyId !== companyId) {
+    throw new Error('Parte de horas no encontrado');
+  }
+
+  const updated = await prisma.timesheetReport.update({
+    where: { id: reportId },
+    data: { status },
+  });
+
+  // Notify the employee
+  const title = status === 'APPROVED'
+    ? '✅ Parte de horas aprobado'
+    : '❌ Parte de horas rechazado';
+  const message = status === 'APPROVED'
+    ? `Tu parte de horas (${report.weekLabel}) ha sido aprobado por tu Project Manager.`
+    : `Tu parte de horas (${report.weekLabel}) ha sido rechazado. Contacta con tu PM.`;
+
+  await prisma.notification.create({
+    data: {
+      userId: report.userId,
+      title,
+      message,
+      type: status === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+    },
+  });
+
+  return updated;
+};
+
 export const getTeamOverview = async (adminUserId: string) => {
   const companyId = await getAdminCompanyId(adminUserId);
 

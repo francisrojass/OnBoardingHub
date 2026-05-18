@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UML Designer — OnBoardingHub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Header */
+    .header { background: #16213e; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #0f3460; }
+    .header h1 { font-size: 1.2rem; color: #4fc3f7; }
+    .header .actions { display: flex; gap: 8px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .btn-primary { background: #4fc3f7; color: #1a1a2e; }
+    .btn-primary:hover { background: #81d4fa; }
+    .btn-success { background: #66bb6a; color: #fff; }
+    .btn-success:hover { background: #81c784; }
+    .btn-warning { background: #ffa726; color: #1a1a2e; }
+    .btn-warning:hover { background: #ffb74d; }
+    .btn-danger { background: #ef5350; color: #fff; }
+    .btn-danger:hover { background: #e57373; }
+    
+    /* Main layout */
+    .main { display: flex; flex: 1; overflow: hidden; }
+    
+    /* Left panel - UML Canvas */
+    .panel-left { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #0f3460; }
+    .panel-header { background: #16213e; padding: 8px 16px; font-size: 0.9rem; color: #aaa; border-bottom: 1px solid #0f3460; display: flex; justify-content: space-between; align-items: center; }
+    .canvas-container { flex: 1; position: relative; overflow: auto; background: #0f0f23; }
+    
+    /* Canvas - UML diagram area */
+    #uml-canvas { width: 100%; height: 100%; position: relative; min-height: 600px; }
+    
+    /* UML Class box */
+    .uml-class { position: absolute; background: #1e2a4a; border: 2px solid #4fc3f7; border-radius: 8px; min-width: 200px; cursor: move; user-select: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .uml-class:hover { border-color: #81d4fa; box-shadow: 0 4px 20px rgba(79,195,247,0.3); }
+    .uml-class-name { background: #4fc3f7; color: #1a1a2e; padding: 8px 12px; font-weight: 700; text-align: center; border-radius: 6px 6px 0 0; font-size: 0.95rem; }
+    .uml-class-section { padding: 6px 12px; border-top: 1px solid #0f3460; font-size: 0.8rem; }
+    .uml-class-section .label { color: #888; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 2px; }
+    .uml-class-section .item { padding: 2px 0; color: #ccc; }
+    .uml-class .delete-btn { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%; background: #ef5350; color: #fff; border: none; cursor: pointer; font-size: 0.7rem; display: none; line-height: 20px; text-align: center; }
+    .uml-class:hover .delete-btn { display: block; }
+    
+    /* SVG for relations */
+    #relations-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    #relations-svg line { stroke: #4fc3f7; stroke-width: 2; }
+    #relations-svg text { fill: #aaa; font-size: 11px; }
+    #relations-svg polygon { fill: #4fc3f7; }
+    
+    /* Right panel - Code output */
+    .panel-right { width: 420px; display: flex; flex-direction: column; }
+    .code-output { flex: 1; background: #0d1117; padding: 16px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.8rem; overflow: auto; white-space: pre-wrap; color: #c9d1d9; line-height: 1.5; }
+    
+    /* Modals */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #1e2a4a; border-radius: 12px; padding: 24px; width: 400px; max-width: 90%; border: 1px solid #0f3460; }
+    .modal h2 { color: #4fc3f7; margin-bottom: 16px; font-size: 1.1rem; }
+    .modal label { display: block; margin-bottom: 4px; color: #aaa; font-size: 0.85rem; margin-top: 12px; }
+    .modal input, .modal select { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #0f3460; background: #0f0f23; color: #eee; font-size: 0.9rem; }
+    .modal .field-group { margin-bottom: 8px; }
+    .modal .items-list { max-height: 150px; overflow-y: auto; margin: 8px 0; }
+    .modal .items-list .item-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: center; }
+    .modal .items-list .item-row input { flex: 1; }
+    .modal .items-list .item-row select { width: 100px; }
+    .modal .items-list .item-row button { background: #ef5350; border: none; color: #fff; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; }
+    .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .add-item-btn { background: none; border: 1px dashed #4fc3f7; color: #4fc3f7; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-top: 4px; }
+    
+    /* Toast */
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #66bb6a; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; z-index: 2000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .toast.error { background: #ef5350; }
+    .toast.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Relation labels */
+    .relation-badge { position: absolute; background: #0f3460; color: #4fc3f7; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🏗️ UML Class Designer</h1>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="openClassModal()">+ Clase</button>
+      <button class="btn btn-warning" onclick="openRelationModal()">+ Relación</button>
+      <button class="btn btn-success" onclick="generateCode()">⚡ Generar C#</button>
+      <button class="btn btn-primary" onclick="copyToProject()">📋 Copiar al proyecto</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div class="panel-left">
+      <div class="panel-header">
+        <span>📐 Diagrama UML</span>
+        <span id="class-count">0 clases · 0 relaciones</span>
+      </div>
+      <div class="canvas-container">
+        <div id="uml-canvas">
+          <svg id="relations-svg"></svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="panel-right">
+      <div class="panel-header">
+        <span>💻 Código C# Generado</span>
+      </div>
+      <div class="code-output" id="code-output">
+// Diseña tu diagrama UML y pulsa "⚡ Generar C#"
+// para ver el código aquí.
+//
+// Pasos:
+//  1. Crea clases con "+ Clase"
+//  2. Añade relaciones con "+ Relación"
+//  3. Genera el código
+//  4. Copia al proyecto y haz commit
+      </div>
+    </div>
+  </div>
+  
+  <!-- New Class Modal -->
+  <div class="modal-overlay" id="class-modal">
+    <div class="modal">
+      <h2>Nueva Clase</h2>
+      <div class="field-group">
+        <label>Nombre de la clase</label>
+        <input type="text" id="class-name" placeholder="Ej: Book">
+      </div>
+      <div class="field-group">
+        <label>Atributos</label>
+        <div class="items-list" id="attrs-list"></div>
+        <button class="add-item-btn" onclick="addAttrRow()">+ Añadir atributo</button>
+      </div>
+      <div class="field-group">
+        <label>Métodos</label>
+        <div class="items-list" id="methods-list"></div>
+        <button class="add-item-btn" onclick="addMethodRow()">+ Añadir método</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="closeClassModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="saveClass()">Guardar</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- New Relation Modal -->
+  <div class="modal-overlay" id="relation-modal">
+    <div class="modal">
+      <h2>Nueva Relación</h2>
+      <div class="field-group">
+        <label>Clase Origen</label>
+        <select id="rel-from"></select>
+      </div>
+      <div class="field-group">
+        <label>Clase Destino</label>
+        <select id="rel-to"></select>
+      </div>
+      <div class="field-group">
+        <label>Tipo</label>
+        <select id="rel-type">
+          <option value="association">Asociación (→)</option>
+          <option value="inheritance">Herencia (▷)</option>
+          <option value="composition">Composición (◆)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Etiqueta (opcional)</label>
+        <input type="text" id="rel-label" placeholder="Ej: tiene, contiene...">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="closeRelationModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="saveRelation()">Guardar</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+  
+  <script>
+    // ─── State ─────────────────────────────────────────────────
+    let classes = [];
+    let relations = [];
+    let generatedCode = '';
+    let dragTarget = null;
+    let dragOffset = { x: 0, y: 0 };
+    
+    // ─── Class Modal ───────────────────────────────────────────
+    function openClassModal() {
+      document.getElementById('class-name').value = '';
+      document.getElementById('attrs-list').innerHTML = '';
+      document.getElementById('methods-list').innerHTML = '';
+      addAttrRow();
+      addMethodRow();
+      document.getElementById('class-modal').classList.add('active');
+    }
+    
+    function closeClassModal() {
+      document.getElementById('class-modal').classList.remove('active');
+    }
+    
+    function addAttrRow() {
+      const list = document.getElementById('attrs-list');
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <input type="text" placeholder="nombre" style="flex:1">
+        <select style="width:100px">
+          <option value="string">string</option>
+          <option value="int">int</option>
+          <option value="bool">bool</option>
+          <option value="double">double</option>
+          <option value="DateTime">DateTime</option>
+          <option value="List">List&lt;T&gt;</option>
+        </select>
+        <select style="width:60px">
+          <option value="public">+</option>
+          <option value="private">-</option>
+          <option value="protected">#</option>
+        </select>
+        <button onclick="this.parentElement.remove()">×</button>
+      `;
+      list.appendChild(row);
+    }
+    
+    function addMethodRow() {
+      const list = document.getElementById('methods-list');
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <input type="text" placeholder="NombreMetodo()" style="flex:1">
+        <select style="width:100px">
+          <option value="void">void</option>
+          <option value="string">string</option>
+          <option value="int">int</option>
+          <option value="bool">bool</option>
+          <option value="List">List&lt;T&gt;</option>
+        </select>
+        <select style="width:60px">
+          <option value="public">+</option>
+          <option value="private">-</option>
+          <option value="protected">#</option>
+        </select>
+        <button onclick="this.parentElement.remove()">×</button>
+      `;
+      list.appendChild(row);
+    }
+    
+    function saveClass() {
+      const name = document.getElementById('class-name').value.trim();
+      if (!name) { showToast('El nombre es obligatorio', true); return; }
+      if (classes.find(c => c.name === name)) { showToast('Ya existe una clase con ese nombre', true); return; }
+      
+      const attrs = [];
+      document.querySelectorAll('#attrs-list .item-row').forEach(row => {
+        const inputs = row.querySelectorAll('input, select');
+        const attrName = inputs[0].value.trim();
+        if (attrName) attrs.push({ name: attrName, type: inputs[1].value, visibility: inputs[2].value });
+      });
+      
+      const methods = [];
+      document.querySelectorAll('#methods-list .item-row').forEach(row => {
+        const inputs = row.querySelectorAll('input, select');
+        const methodName = inputs[0].value.trim();
+        if (methodName) methods.push({ name: methodName, returnType: inputs[1].value, visibility: inputs[2].value });
+      });
+      
+      const cls = {
+        id: Date.now(),
+        name,
+        attrs,
+        methods,
+        x: 50 + Math.random() * 300,
+        y: 50 + Math.random() * 200
+      };
+      
+      classes.push(cls);
+      closeClassModal();
+      renderCanvas();
+      showToast(`Clase "${name}" creada`);
+    }
+    
+    // ─── Relation Modal ────────────────────────────────────────
+    function openRelationModal() {
+      if (classes.length < 2) { showToast('Necesitas al menos 2 clases', true); return; }
+      const fromSel = document.getElementById('rel-from');
+      const toSel = document.getElementById('rel-to');
+      fromSel.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      toSel.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('rel-label').value = '';
+      document.getElementById('relation-modal').classList.add('active');
+    }
+    
+    function closeRelationModal() {
+      document.getElementById('relation-modal').classList.remove('active');
+    }
+    
+    function saveRelation() {
+      const fromId = parseInt(document.getElementById('rel-from').value);
+      const toId = parseInt(document.getElementById('rel-to').value);
+      const type = document.getElementById('rel-type').value;
+      const label = document.getElementById('rel-label').value.trim();
+      
+      if (fromId === toId) { showToast('Selecciona clases diferentes', true); return; }
+      
+      relations.push({ fromId, toId, type, label });
+      closeRelationModal();
+      renderCanvas();
+      showToast('Relación creada');
+    }
+    
+    // ─── Render ────────────────────────────────────────────────
+    function renderCanvas() {
+      const canvas = document.getElementById('uml-canvas');
+      // Remove old class elements (keep SVG)
+      canvas.querySelectorAll('.uml-class').forEach(el => el.remove());
+      
+      classes.forEach(cls => {
+        const el = document.createElement('div');
+        el.className = 'uml-class';
+        el.dataset.id = cls.id;
+        el.style.left = cls.x + 'px';
+        el.style.top = cls.y + 'px';
+        
+        const visSymbol = { public: '+', private: '-', protected: '#' };
+        
+        let html = `<button class="delete-btn" onclick="deleteClass(${cls.id})">×</button>`;
+        html += `<div class="uml-class-name">${cls.name}</div>`;
+        html += `<div class="uml-class-section"><div class="label">Atributos</div>`;
+        cls.attrs.forEach(a => {
+          html += `<div class="item">${visSymbol[a.visibility]} ${a.name}: ${a.type}</div>`;
+        });
+        if (!cls.attrs.length) html += `<div class="item" style="color:#555">—</div>`;
+        html += `</div>`;
+        html += `<div class="uml-class-section"><div class="label">Métodos</div>`;
+        cls.methods.forEach(m => {
+          html += `<div class="item">${visSymbol[m.visibility]} ${m.name}: ${m.returnType}</div>`;
+        });
+        if (!cls.methods.length) html += `<div class="item" style="color:#555">—</div>`;
+        html += `</div>`;
+        
+        el.innerHTML = html;
+        
+        // Drag events
+        el.addEventListener('mousedown', (e) => {
+          if (e.target.classList.contains('delete-btn')) return;
+          dragTarget = cls;
+          dragOffset.x = e.clientX - cls.x;
+          dragOffset.y = e.clientY - cls.y;
+        });
+        
+        canvas.appendChild(el);
+      });
+      
+      renderRelations();
+      updateCounts();
+    }
+    
+    function renderRelations() {
+      const svg = document.getElementById('relations-svg');
+      svg.innerHTML = '';
+      
+      relations.forEach(rel => {
+        const fromCls = classes.find(c => c.id === rel.fromId);
+        const toCls = classes.find(c => c.id === rel.toId);
+        if (!fromCls || !toCls) return;
+        
+        const fromEl = document.querySelector(`.uml-class[data-id="${rel.fromId}"]`);
+        const toEl = document.querySelector(`.uml-class[data-id="${rel.toId}"]`);
+        if (!fromEl || !toEl) return;
+        
+        const x1 = fromCls.x + fromEl.offsetWidth / 2;
+        const y1 = fromCls.y + fromEl.offsetHeight / 2;
+        const x2 = toCls.x + toEl.offsetWidth / 2;
+        const y2 = toCls.y + toEl.offsetHeight / 2;
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        
+        if (rel.type === 'inheritance') {
+          line.setAttribute('stroke-dasharray', '8,4');
+        }
+        
+        svg.appendChild(line);
+        
+        // Arrow/marker at end
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const arrowLen = 12;
+        const ax = x2 - arrowLen * Math.cos(angle - 0.3);
+        const ay = y2 - arrowLen * Math.sin(angle - 0.3);
+        const bx = x2 - arrowLen * Math.cos(angle + 0.3);
+        const by = y2 - arrowLen * Math.sin(angle + 0.3);
+        
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', `${x2},${y2} ${ax},${ay} ${bx},${by}`);
+        if (rel.type === 'inheritance') polygon.setAttribute('fill', 'none');
+        if (rel.type === 'inheritance') polygon.setAttribute('stroke', '#4fc3f7');
+        if (rel.type === 'composition') polygon.setAttribute('fill', '#ffa726');
+        svg.appendChild(polygon);
+        
+        // Label
+        if (rel.label) {
+          const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textEl.setAttribute('x', (x1 + x2) / 2);
+          textEl.setAttribute('y', (y1 + y2) / 2 - 8);
+          textEl.setAttribute('text-anchor', 'middle');
+          textEl.textContent = rel.label;
+          svg.appendChild(textEl);
+        }
+        
+        // Type label
+        const typeLabels = { association: '→', inheritance: '▷', composition: '◆' };
+        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('x', (x1 + x2) / 2 + 10);
+        typeText.setAttribute('y', (y1 + y2) / 2 + 14);
+        typeText.setAttribute('text-anchor', 'middle');
+        typeText.setAttribute('font-size', '14');
+        typeText.textContent = typeLabels[rel.type];
+        svg.appendChild(typeText);
+      });
+    }
+    
+    function deleteClass(id) {
+      classes = classes.filter(c => c.id !== id);
+      relations = relations.filter(r => r.fromId !== id && r.toId !== id);
+      renderCanvas();
+    }
+    
+    function updateCounts() {
+      document.getElementById('class-count').textContent = `${classes.length} clases · ${relations.length} relaciones`;
+    }
+    
+    // ─── Drag ──────────────────────────────────────────────────
+    document.addEventListener('mousemove', (e) => {
+      if (!dragTarget) return;
+      dragTarget.x = e.clientX - dragOffset.x;
+      dragTarget.y = e.clientY - dragOffset.y;
+      const el = document.querySelector(`.uml-class[data-id="${dragTarget.id}"]`);
+      if (el) {
+        el.style.left = dragTarget.x + 'px';
+        el.style.top = dragTarget.y + 'px';
+      }
+      renderRelations();
+    });
+    
+    document.addEventListener('mouseup', () => { dragTarget = null; });
+    
+    // ─── Code Generation ───────────────────────────────────────
+    function generateCode() {
+      if (classes.length === 0) { showToast('Crea al menos una clase primero', true); return; }
+      
+      let code = '// ═══════════════════════════════════════════════════\n';
+      code += '// Código generado por UML Designer — OnBoardingHub\n';
+      code += '// ═══════════════════════════════════════════════════\n\n';
+      code += 'namespace LibraryModel.Models\n{\n';
+      
+      // Build inheritance map
+      const inheritanceMap = {};
+      relations.forEach(r => {
+        if (r.type === 'inheritance') {
+          inheritanceMap[r.fromId] = r.toId;
+        }
+      });
+      
+      // Build association map (for List<T> properties)
+      const associationMap = {};
+      relations.forEach(r => {
+        if (r.type === 'association' || r.type === 'composition') {
+          if (!associationMap[r.fromId]) associationMap[r.fromId] = [];
+          const targetCls = classes.find(c => c.id === r.toId);
+          if (targetCls) associationMap[r.fromId].push(targetCls.name);
+        }
+      });
+      
+      classes.forEach((cls, idx) => {
+        const parentId = inheritanceMap[cls.id];
+        const parentCls = parentId ? classes.find(c => c.id === parentId) : null;
+        const inheritance = parentCls ? ` : ${parentCls.name}` : '';
+        
+        code += `    public class ${cls.name}${inheritance}\n    {\n`;
+        
+        // Attributes
+        cls.attrs.forEach(a => {
+          const vis = a.visibility;
+          code += `        ${vis} ${a.type} ${capitalize(a.name)} { get; set; }\n`;
+        });
+        
+        // Association properties
+        const assocs = associationMap[cls.id] || [];
+        assocs.forEach(targetName => {
+          code += `        public List<${targetName}> ${targetName}s { get; set; } = new List<${targetName}>();\n`;
+        });
+        
+        if (cls.attrs.length > 0 || assocs.length > 0) code += '\n';
+        
+        // Constructor
+        if (cls.attrs.length > 0) {
+          const params = cls.attrs.map(a => `${a.type} ${a.name}`).join(', ');
+          code += `        public ${cls.name}(${params})\n        {\n`;
+          cls.attrs.forEach(a => {
+            code += `            ${capitalize(a.name)} = ${a.name};\n`;
+          });
+          code += `        }\n\n`;
+        }
+        
+        // Methods
+        cls.methods.forEach(m => {
+          const vis = m.visibility;
+          const methodName = m.name.replace(/\(.*\)/, '');
+          code += `        ${vis} ${m.returnType} ${methodName}()\n        {\n`;
+          if (m.returnType === 'void') {
+            code += `            // TODO: Implementar\n`;
+          } else if (m.returnType === 'bool') {
+            code += `            // TODO: Implementar\n            return false;\n`;
+          } else if (m.returnType === 'int') {
+            code += `            // TODO: Implementar\n            return 0;\n`;
+          } else if (m.returnType === 'string') {
+            code += `            // TODO: Implementar\n            return "";\n`;
+          } else {
+            code += `            // TODO: Implementar\n            return default;\n`;
+          }
+          code += `        }\n\n`;
+        });
+        
+        code += `    }\n`;
+        if (idx < classes.length - 1) code += '\n';
+      });
+      
+      code += '}\n';
+      
+      generatedCode = code;
+      document.getElementById('code-output').textContent = code;
+      showToast('Código C# generado correctamente');
+    }
+    
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    // ─── Copy to Project ───────────────────────────────────────
+    function copyToProject() {
+      if (!generatedCode) { showToast('Genera el código primero', true); return; }
+      
+      // Send code to backend to write files
+      fetch('/api/save-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: generatedCode, classes: classes.map(c => c.name) })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(`✅ ${data.files.length} archivo(s) guardados en Models/`);
+        } else {
+          showToast('Error al guardar: ' + data.error, true);
+        }
+      })
+      .catch(() => showToast('Error de conexión con el servidor', true));
+    }
+    
+    // ─── Toast ─────────────────────────────────────────────────
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast active' + (isError ? ' error' : '');
+      setTimeout(() => toast.classList.remove('active'), 3000);
+    }
+  </script>
+</body>
+</html>

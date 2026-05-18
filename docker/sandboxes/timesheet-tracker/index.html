@@ -335,6 +335,32 @@ function submitReady() {
   state.status = 'submitted';
   render();
   toast('¡Parte enviado al Project Manager! 🎉', 'success');
+
+  // Notify parent window (OnBoardingHub) about the submission
+  const report = buildTimesheetReport();
+  window.parent.postMessage({ type: 'TIMESHEET_SUBMITTED', payload: report }, '*');
+}
+
+function buildTimesheetReport() {
+  const weekLabel = document.getElementById('weekLabel').textContent;
+  let totalHours = 0;
+  const days = DAYS.map(day => {
+    const entries = state.entries[day.key];
+    const dayTotal = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+    totalHours += dayTotal;
+    return {
+      day: day.name,
+      date: day.date,
+      totalHours: dayTotal,
+      entries: entries.map(e => ({
+        workOrder: WORK_ORDERS.find(wo => wo.id === e.wo)?.name || e.wo,
+        workOrderId: e.wo,
+        hours: parseFloat(e.hours) || 0,
+        description: e.desc || '',
+      })),
+    };
+  });
+  return { weekLabel, totalHours, days };
 }
 
 function backToDraft() {

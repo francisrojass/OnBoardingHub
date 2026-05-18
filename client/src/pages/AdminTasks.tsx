@@ -24,6 +24,7 @@ interface Task {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
   priority: 'LOW' | 'MEDIUM' | 'HIGH'
   category: string
+  completionData: any | null
   box: { id: string; title: string; difficulty: string } | null
 }
 
@@ -71,6 +72,14 @@ function WorkersTab({ onAssign }: { onAssign: (w: Worker) => void }) {
 
   const deleteMutation = useMutation({
     mutationFn: (taskId: string) => api.delete(`/admin/tasks/${taskId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-workers'] })
+      qc.invalidateQueries({ queryKey: ['admin-worker-tasks', expanded] })
+    },
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: (taskId: string) => api.patch(`/admin/tasks/${taskId}`, { status: 'COMPLETED' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-workers'] })
       qc.invalidateQueries({ queryKey: ['admin-worker-tasks', expanded] })
@@ -178,30 +187,42 @@ function WorkersTab({ onAssign }: { onAssign: (w: Worker) => void }) {
                       </div>
                     ) : (
                       tasks.map(task => (
-                        <div key={task.id} className="worker-task-row">
-                          <div className="admin-task-status-dot" style={{ background: STATUS_COLOR[task.status] }} />
-                          <div className="task-body">
-                            <div className="task-title" style={{ fontSize: 13 }}>{task.title}</div>
-                            {task.description && <div className="task-desc">{task.description}</div>}
-                            {task.box && (
-                              <div className="admin-task-sandbox-tag">
-                                <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-                                </svg>
-                                {task.box.title}
-                                <span className={`diff-badge ${task.box.difficulty}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                                  {DIFF_LABEL[task.box.difficulty]}
-                                </span>
-                              </div>
+                        <div key={task.id} className="worker-task-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="admin-task-status-dot" style={{ background: STATUS_COLOR[task.status] }} />
+                            <div className="task-body">
+                              <div className="task-title" style={{ fontSize: 13 }}>{task.title}</div>
+                              {task.description && <div className="task-desc">{task.description}</div>}
+                              {task.box && (
+                                <div className="admin-task-sandbox-tag">
+                                  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+                                  </svg>
+                                  {task.box.title}
+                                  <span className={`diff-badge ${task.box.difficulty}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                                    {DIFF_LABEL[task.box.difficulty]}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="task-meta">
+                              <span className={`task-priority priority-${task.priority.toLowerCase()}`}>
+                                {PRIORITY_LABEL[task.priority]}
+                              </span>
+                              <span className={`task-status-badge status-${task.status.toLowerCase().replace('_', '-')}`}>
+                                {STATUS_LABEL[task.status]}
+                              </span>
+                              {task.status === 'IN_PROGRESS' && (
+                                <button
+                                  className="btn-primary"
+                                  style={{ fontSize: 11, padding: '4px 10px', background: '#10b981' }}
+                                  onClick={() => approveMutation.mutate(task.id)}
+                                  disabled={approveMutation.isLoading}
+                                  title="Aprobar como completada"
+                              >
+                                ✓ Aprobar
+                              </button>
                             )}
-                          </div>
-                          <div className="task-meta">
-                            <span className={`task-priority priority-${task.priority.toLowerCase()}`}>
-                              {PRIORITY_LABEL[task.priority]}
-                            </span>
-                            <span className={`task-status-badge status-${task.status.toLowerCase().replace('_', '-')}`}>
-                              {STATUS_LABEL[task.status]}
-                            </span>
                             <button
                               className="admin-delete-btn"
                               onClick={() => deleteMutation.mutate(task.id)}
@@ -211,7 +232,44 @@ function WorkersTab({ onAssign }: { onAssign: (w: Worker) => void }) {
                                 <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
                               </svg>
                             </button>
+                            </div>
                           </div>
+                          {/* Show completion data if task is completed with data */}
+                          {task.status === 'COMPLETED' && task.completionData && (
+                            <div style={{
+                              marginTop: 8, padding: '10px 14px', background: '#f0fdf4',
+                              borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 12
+                            }}>
+                              <div style={{ fontWeight: 700, marginBottom: 6, color: '#166534' }}>
+                                📋 Datos enviados por el empleado:
+                              </div>
+                              {task.completionData.days && (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                                  <thead>
+                                    <tr style={{ borderBottom: '1px solid #86efac' }}>
+                                      <th style={{ textAlign: 'left', padding: '3px 6px', color: '#166534' }}>Día</th>
+                                      <th style={{ textAlign: 'left', padding: '3px 6px', color: '#166534' }}>Proyecto</th>
+                                      <th style={{ textAlign: 'right', padding: '3px 6px', color: '#166534' }}>Horas</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {task.completionData.days.map((d: any, i: number) => (
+                                      <tr key={i} style={{ borderBottom: '1px solid #dcfce7' }}>
+                                        <td style={{ padding: '3px 6px' }}>{d.day}</td>
+                                        <td style={{ padding: '3px 6px' }}>{d.project || '—'}</td>
+                                        <td style={{ padding: '3px 6px', textAlign: 'right', fontWeight: 600 }}>{d.totalHours}h</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                              {task.completionData.totalHours != null && (
+                                <div style={{ marginTop: 6, fontWeight: 700, color: '#166534' }}>
+                                  Total: {task.completionData.totalHours}h
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -222,6 +280,153 @@ function WorkersTab({ onAssign }: { onAssign: (w: Worker) => void }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ─── Tab: Partes de Horas ─────────────────────────────────────── */
+interface TimesheetSubmission {
+  id: string
+  title: string
+  status: string
+  priority: string
+  completionData: any
+  updatedAt: string
+  user: { id: string; name: string; email: string }
+  box: { id: string; title: string } | null
+}
+
+function TimesheetsTab() {
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const { data: submissions = [], isLoading } = useQuery<TimesheetSubmission[]>({
+    queryKey: ['admin-timesheets'],
+    queryFn: () => api.get('/admin/timesheets').then(r => r.data),
+    refetchInterval: 15000,
+  })
+
+  if (isLoading) return <div className="tasks-loading"><div className="tasks-spinner" /></div>
+
+  if (submissions.length === 0) {
+    return (
+      <div className="empty-state" style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-md)', padding: 48 }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+        <h3>Sin partes enviados</h3>
+        <p>Aquí aparecerán los partes de horas que envíen tus empleados desde sus sandboxes.</p>
+      </div>
+    )
+  }
+
+  // Group by user
+  const byUser: Record<string, { user: TimesheetSubmission['user']; subs: TimesheetSubmission[] }> = {}
+  for (const sub of submissions) {
+    if (!byUser[sub.user.id]) byUser[sub.user.id] = { user: sub.user, subs: [] }
+    byUser[sub.user.id].subs.push(sub)
+  }
+  const userGroups = Object.values(byUser)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {userGroups.map(group => {
+        const isOpen = expanded === group.user.id
+        const totalSubs = group.subs.length
+        return (
+          <div key={group.user.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            {/* User header */}
+            <div
+              onClick={() => setExpanded(isOpen ? null : group.user.id)}
+              style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: isOpen ? '#f8fafc' : 'white', transition: 'background 0.15s' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Avatar name={group.user.name} size={38} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>{group.user.name}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>{group.user.email}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#3b82f6', background: '#dbeafe', padding: '3px 10px', borderRadius: 20 }}>
+                  {totalSubs} {totalSubs === 1 ? 'parte' : 'partes'}
+                </span>
+                <svg
+                  width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  style={{ color: 'var(--text-light)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }}
+                >
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Expanded: all submissions for this user */}
+            {isOpen && (
+              <div style={{ borderTop: '1px solid #e2e8f0' }}>
+                {group.subs.map(sub => {
+                  const data = sub.completionData || {}
+                  const days: any[] = data.days || []
+                  const totalHours = data.totalHours ?? days.reduce((s: number, d: any) => s + (d.totalHours || 0), 0)
+                  const weekLabel = data.weekLabel || ''
+                  const submittedAt = new Date(sub.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+                  return (
+                    <div key={sub.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      {/* Submission header */}
+                      <div style={{ padding: '10px 20px', background: '#fafbfc', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                        {sub.box && (
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', background: '#eef2ff', padding: '3px 10px', borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+                            {sub.box.title}
+                          </span>
+                        )}
+                        {weekLabel && <span style={{ fontSize: 11, color: '#475569', background: '#f1f5f9', padding: '2px 8px', borderRadius: 12, border: '1px solid #e2e8f0' }}>{weekLabel}</span>}
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', background: '#dcfce7', padding: '2px 10px', borderRadius: 20 }}>✓ {totalHours}h</span>
+                        <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{submittedAt}</span>
+                      </div>
+
+                      {/* Days table */}
+                      {days.length > 0 && (
+                        <div style={{ overflowX: 'auto' as const }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc' }}>
+                                <th style={{ textAlign: 'left', padding: '6px 20px', color: '#475569', fontWeight: 600, borderBottom: '1px solid #e2e8f0', fontSize: 11 }}>Día</th>
+                                <th style={{ textAlign: 'left', padding: '6px 20px', color: '#475569', fontWeight: 600, borderBottom: '1px solid #e2e8f0', fontSize: 11 }}>Entradas</th>
+                                <th style={{ textAlign: 'right', padding: '6px 20px', color: '#475569', fontWeight: 600, borderBottom: '1px solid #e2e8f0', fontSize: 11 }}>Horas</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {days.map((d: any, i: number) => (
+                                <tr key={i} style={{ borderBottom: i < days.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                                  <td style={{ padding: '6px 20px', fontWeight: 500, color: '#334155', whiteSpace: 'nowrap' as const, fontSize: 12 }}>{d.day}{d.date ? <span style={{ color: '#94a3b8', fontWeight: 400 }}> · {d.date}</span> : null}</td>
+                                  <td style={{ padding: '6px 20px', color: '#64748b' }}>
+                                    {(d.entries || []).map((e: any, j: number) => (
+                                      <div key={j} style={{ fontSize: 11, marginBottom: 1 }}>
+                                        <span style={{ fontWeight: 600 }}>{e.hours}h</span> — {e.workOrder || e.project || '—'}{e.description ? <span style={{ color: '#94a3b8' }}> · {e.description}</span> : null}
+                                      </div>
+                                    ))}
+                                    {(!d.entries || d.entries.length === 0) && <span style={{ color: '#94a3b8' }}>—</span>}
+                                  </td>
+                                  <td style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 700, color: d.totalHours === 8 ? '#10b981' : '#f59e0b' }}>{d.totalHours}h</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: '#f0fdf4', borderTop: '2px solid #bbf7d0' }}>
+                                <td colSpan={2} style={{ padding: '6px 20px', fontWeight: 700, color: '#166534', fontSize: 12 }}>TOTAL SEMANA</td>
+                                <td style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 800, color: '#166534', fontSize: 13 }}>{totalHours}h</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -492,7 +697,7 @@ function AssignTab({ preselectedWorker, onSuccess }: { preselectedWorker: Worker
 
 /* ─── Main Page ─────────────────────────────────────────────────── */
 export default function AdminTasks() {
-  const [tab, setTab] = useState<'workers' | 'assign'>('workers')
+  const [tab, setTab] = useState<'workers' | 'assign' | 'timesheets'>('workers')
   const [preselectedWorker, setPreselectedWorker] = useState<Worker | null>(null)
 
   const handleAssignFromWorker = (w: Worker) => {
@@ -529,13 +734,21 @@ export default function AdminTasks() {
           </svg>
           Asignar tarea
         </button>
+        <button
+          className={`admin-tab${tab === 'timesheets' ? ' active' : ''}`}
+          onClick={() => setTab('timesheets')}
+        >
+          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Partes de Horas
+        </button>
       </div>
 
       <div style={{ marginTop: 20 }}>
-        {tab === 'workers'
-          ? <WorkersTab onAssign={handleAssignFromWorker} />
-          : <AssignTab preselectedWorker={preselectedWorker} onSuccess={() => setTab('workers')} />
-        }
+        {tab === 'workers' && <WorkersTab onAssign={handleAssignFromWorker} />}
+        {tab === 'assign' && <AssignTab preselectedWorker={preselectedWorker} onSuccess={() => setTab('workers')} />}
+        {tab === 'timesheets' && <TimesheetsTab />}
       </div>
     </div>
   )

@@ -6,5 +6,7 @@ const router = Router();
 
 router.get('/team', verifyToken, reportController.getTeamOverview);
 router.get('/boxes', verifyToken, reportController.getCompanyBoxStats);
+router.get('/timesheets', verifyToken, reportController.getTimesheets);
+router.patch('/timesheets/:id', verifyToken, reportController.updateTimesheetStatus);
 
 export default router;

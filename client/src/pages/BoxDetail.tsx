@@ -62,6 +62,7 @@ export default function BoxDetail() {
   const { id } = useParams()
   const queryClient = useQueryClient()
   const [guideOpen, setGuideOpen] = useState(true)
+  const [timesheetToast, setTimesheetToast] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const { data, isLoading } = useQuery(
     ['box', id],
@@ -95,6 +96,31 @@ export default function BoxDetail() {
     }
   }, [activeSandbox?.id])
 
+  // Listen for postMessage events from sandbox iframes
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'TIMESHEET_SUBMITTED') {
+        console.log('[BoxDetail] TIMESHEET_SUBMITTED received, forwarding to backend...', event.data.payload)
+        api.post('/sandboxes/event', {
+          eventType: 'TIMESHEET_SUBMITTED',
+          payload: event.data.payload,
+          boxId: id,
+        }).then((res) => {
+          console.log('[BoxDetail] Event sent successfully:', res.data)
+          queryClient.invalidateQueries(['tasks'])
+          setTimesheetToast({ ok: true, msg: '✅ Parte enviado al PM correctamente' })
+          setTimeout(() => setTimesheetToast(null), 5000)
+        }).catch((err) => {
+          console.error('[BoxDetail] Error sending event:', err.response?.data || err.message)
+          setTimesheetToast({ ok: false, msg: '⚠️ Error al enviar el parte: ' + (err.response?.data?.message || err.message) })
+          setTimeout(() => setTimesheetToast(null), 7000)
+        })
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [id, queryClient])
+
   const boxTasks = Array.isArray(allTasks) ? allTasks.filter((t: any) => t.box?.id === id) : []
   const completedTasksCount = boxTasks.filter((t: any) => t.status === 'COMPLETED').length
   const totalTasksCount = boxTasks.length
@@ -126,6 +152,18 @@ export default function BoxDetail() {
 
   return (
     <>
+      {/* Timesheet submission toast */}
+      {timesheetToast && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: timesheetToast.ok ? '#10b981' : '#ef4444', color: 'white',
+          padding: '12px 24px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+          zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          animation: 'fadeUp 0.3s ease',
+        }}>
+          {timesheetToast.msg}
+        </div>
+      )}
       {/* Back link */}
       <div style={{ marginBottom: 20 }}>
         <Link
@@ -172,9 +210,11 @@ export default function BoxDetail() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: 'var(--text-dark)' }}>
                   Objetivos
                 </h3>
-                <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.75 }}>
-                  {data.objectives}
-                </p>
+                <div 
+                  className="guide-content"
+                  style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.75 }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(data.objectives) }}
+                />
               </div>
             )}
 
@@ -257,7 +297,7 @@ export default function BoxDetail() {
                     </div>
                     {iframeReady ? (
                       <iframe
-                        src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                        src={`http://${window.location.hostname}:${activeSandbox.port}?_sb=${activeSandbox.id}`}
                         style={{ flex: 1, border: 'none', background: '#000' }}
                         title="Terminal"
                       />
@@ -288,7 +328,7 @@ export default function BoxDetail() {
                   </div>
                   {iframeReady ? (
                     <iframe
-                      src={`http://${window.location.hostname}:${activeSandbox.port}`}
+                      src={`http://${window.location.hostname}:${activeSandbox.port}?_sb=${activeSandbox.id}`}
                       style={{ flex: 1, border: 'none', background: '#000' }}
                       title="Terminal"
                     />

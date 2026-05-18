@@ -3,7 +3,10 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ── Core tools + jq ─────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y \
+# Disable GPG auth to work around transient Ubuntu CDN BADSIG errors in Docker builds
+RUN apt-get -o Acquire::AllowInsecureRepositories=true \
+        -o Acquire::AllowDowngradeToInsecureRepositories=true update \
+    && apt-get install -y --allow-unauthenticated \
     curl git vim nano ttyd tree jq \
     && rm -rf /var/lib/apt/lists/*
 

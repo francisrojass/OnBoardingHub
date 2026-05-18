@@ -61,18 +61,22 @@ export default function AdminReports() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['team', 'boxes'] as const).map(t => (
+        {([
+          { key: 'team', label: '👥 Equipo' },
+          { key: 'boxes', label: '📦 Boxes' },
+        ] as const).map(t => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             style={{
               padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-              background: tab === t ? 'var(--primary)' : 'white',
-              color: tab === t ? 'white' : 'var(--text-mid)',
+              background: tab === t.key ? 'var(--primary)' : 'white',
+              color: tab === t.key ? 'white' : 'var(--text-mid)',
               boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
             }}
           >
-            {t === 'team' ? '👥 Equipo' : '📦 Boxes'}
+            {t.label}
           </button>
         ))}
       </div>

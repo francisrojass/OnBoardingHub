@@ -7,22 +7,23 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String
-  avatar        String?
-  role          Role           @default(EMPLOYEE)
-  companyId     String
-  company       Company        @relation(fields: [companyId], references: [id])
-  sandboxes     Sandbox[]
-  tasks         Task[]
-  xp            Int            @default(0)
-  level         Int            @default(1)
-  boxProgresses BoxProgress[]
-  notifications Notification[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id               String            @id @default(cuid())
+  email            String            @unique
+  password         String
+  name             String
+  avatar           String?
+  role             Role              @default(EMPLOYEE)
+  companyId        String
+  company          Company           @relation(fields: [companyId], references: [id])
+  sandboxes        Sandbox[]
+  tasks            Task[]
+  xp               Int               @default(0)
+  level            Int               @default(1)
+  boxProgresses    BoxProgress[]
+  notifications    Notification[]
+  timesheetReports TimesheetReport[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model Company {
@@ -72,18 +73,19 @@ model Sandbox {
 }
 
 model Task {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  status      TaskStatus @default(PENDING)
-  priority    Priority   @default(MEDIUM)
-  category    String     @default("General")
-  userId      String
-  user        User       @relation(fields: [userId], references: [id])
-  boxId       String?
-  box         Box?       @relation(fields: [boxId], references: [id])
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  title          String
+  description    String?
+  status         TaskStatus @default(PENDING)
+  priority       Priority   @default(MEDIUM)
+  category       String     @default("General")
+  completionData Json?
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  boxId          String?
+  box            Box?       @relation(fields: [boxId], references: [id])
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }
 
 model BoxProgress {
@@ -140,6 +142,23 @@ enum Priority {
   LOW
   MEDIUM
   HIGH
+}
+
+model TimesheetReport {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  weekLabel  String
+  totalHours Float
+  data       Json
+  status     TimesheetStatus @default(PENDING)
+  createdAt  DateTime @default(now())
+}
+
+enum TimesheetStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum NotificationType {

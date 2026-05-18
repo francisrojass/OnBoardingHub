@@ -37,9 +37,13 @@ export const deleteCompany = async (companyId: string) => {
   const userIds = users.map((u) => u.id);
   
   await prisma.$transaction([
-    prisma.companyBox.deleteMany({ where: { companyId } }),
+    prisma.notification.deleteMany({ where: { userId: { in: userIds } } }),
+    prisma.task.deleteMany({ where: { userId: { in: userIds } } }),
+    prisma.boxProgress.deleteMany({ where: { userId: { in: userIds } } }),
+    prisma.timesheetReport.deleteMany({ where: { userId: { in: userIds } } }),
     prisma.sandbox.deleteMany({ where: { userId: { in: userIds } } }),
+    prisma.companyBox.deleteMany({ where: { companyId } }),
     prisma.user.deleteMany({ where: { companyId } }),
-    prisma.company.delete({ where: { id: companyId } })
+    prisma.company.delete({ where: { id: companyId } }),
   ]);
 };

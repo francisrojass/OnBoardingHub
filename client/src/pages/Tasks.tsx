@@ -19,10 +19,10 @@ const PRIORITY_LABEL: Record<Task['priority'], string> = {
   HIGH: 'Alta',
 }
 
-const STATUS_CYCLE: Record<Task['status'], Task['status']> = {
+const STATUS_CYCLE: Record<Task['status'], Task['status'] | null> = {
   PENDING: 'IN_PROGRESS',
-  IN_PROGRESS: 'COMPLETED',
-  COMPLETED: 'PENDING',
+  IN_PROGRESS: 'PENDING',
+  COMPLETED: null, // Employee cannot change completed tasks
 }
 
 export default function Tasks() {
@@ -34,20 +34,14 @@ export default function Tasks() {
     queryFn: () => api.get('/tasks').then((r) => r.data),
   })
 
-  const { data: sandboxes = [] } = useQuery<any[]>({
-    queryKey: ['sandboxes'],
-    queryFn: () => api.get('/sandboxes').then((r) => r.data),
-  })
-
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: Task['status'] }) =>
       api.patch(`/tasks/${id}`, { status }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
 
-  // Only show tasks linked to boxes the user has a sandbox for
-  const sandboxBoxIds = new Set(sandboxes.map((s: any) => s.boxId).filter(Boolean))
-  const visibleTasks = tasks.filter((t) => t.box && sandboxBoxIds.has(t.box.id))
+  // Show all tasks: those with a sandbox-linked box and those without a box (admin-assigned)
+  const visibleTasks = tasks
 
   const completed = visibleTasks.filter((t) => t.status === 'COMPLETED').length
   const inProgress = visibleTasks.filter((t) => t.status === 'IN_PROGRESS').length
@@ -121,7 +115,7 @@ export default function Tasks() {
       {categories.length === 0 ? (
         <div className="empty-state">
           <h3>No hay tareas</h3>
-          <p>{sandboxBoxIds.size === 0 ? 'No tienes sandboxes asignados. Lanza un sandbox para ver tus tareas.' : 'Prueba con otro filtro.'}</p>
+          <p>{'No tienes tareas asignadas. Tu administrador te asignará tareas pronto.'}</p>
         </div>
       ) : (
         categories.map((cat) => (
@@ -140,9 +134,11 @@ export default function Tasks() {
                   <div
                     key={task.id}
                     className={`task-item${task.status === 'COMPLETED' ? ' completed' : ''}`}
-                    onClick={() =>
-                      mutation.mutate({ id: task.id, status: STATUS_CYCLE[task.status] })
-                    }
+                    onClick={() => {
+                      const next = STATUS_CYCLE[task.status]
+                      if (next) mutation.mutate({ id: task.id, status: next })
+                    }}
+                    style={{ cursor: task.status === 'COMPLETED' ? 'default' : 'pointer' }}
                   >
                     <div className={`task-checkbox${task.status === 'COMPLETED' ? ' checked' : task.status === 'IN_PROGRESS' ? ' in-progress' : ''}`}>
                       {task.status === 'COMPLETED' && (

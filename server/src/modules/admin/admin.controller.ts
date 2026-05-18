@@ -42,3 +42,27 @@ export const deleteTask = async (req: AuthRequest, res: Response): Promise<void>
     res.status(400).json({ message: err.message });
   }
 };
+
+export const getTimesheetSubmissions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const submissions = await adminService.getTimesheetSubmissions(req.userId!);
+    res.json(submissions);
+  } catch (err: any) {
+    res.status(err.message.includes('permisos') ? 403 : 400).json({ message: err.message });
+  }
+};
+
+export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const taskId = req.params['taskId'] as string;
+    const { status } = req.body;
+    if (!['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(status)) {
+      res.status(400).json({ message: 'Estado inválido' });
+      return;
+    }
+    const task = await adminService.updateTaskStatus(req.userId!, taskId, status);
+    res.json(task);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};

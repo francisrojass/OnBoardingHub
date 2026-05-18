@@ -24,46 +24,15 @@ export const updateTaskStatus = async (
   const task = await prisma.task.findFirst({ where: { id: taskId, userId } });
   if (!task) throw new Error('Tarea no encontrada');
 
-  const wasCompleted = task.status === 'COMPLETED';
-  const isNowCompleted = status === 'COMPLETED';
+  // Employees cannot mark tasks as COMPLETED – only PENDING <-> IN_PROGRESS
+  if (status === 'COMPLETED') {
+    throw new Error('Solo un administrador puede aprobar la finalización de una tarea');
+  }
 
   const updated = await prisma.task.update({
     where: { id: taskId },
     data: { status },
   });
-
-  if (isNowCompleted && !wasCompleted) {
-    const xpGained = TASK_XP[task.priority] ?? 50;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { xp: { increment: xpGained } },
-    });
-
-    const newLevel = Math.floor(updatedUser.xp / XP_PER_LEVEL) + 1;
-    const leveledUp = newLevel > updatedUser.level;
-
-    if (leveledUp) {
-      await prisma.user.update({ where: { id: userId }, data: { level: newLevel } });
-      await prisma.notification.create({
-        data: {
-          userId,
-          title: '¡Subiste de nivel!',
-          message: `Felicidades, ahora eres nivel ${newLevel}.`,
-          type: 'XP_GAINED',
-        },
-      });
-    }
-
-    await prisma.notification.create({
-      data: {
-        userId,
-        title: `Tarea completada: ${task.title}`,
-        message: `Has ganado ${xpGained} XP.`,
-        type: 'SUCCESS',
-      },
-    });
-  }
 
   return updated;
 };

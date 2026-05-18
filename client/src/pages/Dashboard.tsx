@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 const ILLUSTRATIONS = [
@@ -68,6 +68,7 @@ function getInitials(name?: string | null) {
 export default function Dashboard() {
   const auth = useContext(AuthContext)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('name')
 
@@ -297,7 +298,7 @@ export default function Dashboard() {
           </div>
         </div>
         {auth?.user?.role === 'SUPER_ADMIN' && (
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/admin', { state: { view: 'new-box' } })}>
             <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M12 5v14m7-7H5"/>
             </svg>
