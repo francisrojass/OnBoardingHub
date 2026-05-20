@@ -1,169 +1,181 @@
-# 🚀 OnBoardingHub
+# OnBoardingHub
 
-> **Transformando el proceso de integración en el sector tecnológico: del "leer manuales" al "aprender haciendo".**
+Plataforma gamificada de onboarding para empresas tecnológicas. Los nuevos empleados aprenden mediante **sandboxes interactivas** (contenedores Docker efímeros) que simulan tareas reales del puesto, reemplazando la documentación estática por aprendizaje práctico guiado.
 
-Bienvenido al repositorio oficial de **OnBoardingHub**. Este espacio aloja el desarrollo de mi Trabajo de Fin de Grado (TFG), enfocado desde la perspectiva de la **Arquitectura de Software**.
+## Arquitectura
 
----
-
-## 🎯 El problema que queremos resolver
-En el sector de la consultoría tecnológica, los procesos de incorporación (*onboarding*) de nuevos empleados suelen ser lentos, repetitivos y poco eficientes. Tradicionalmente, dependen en gran medida de leer documentación estática interminable o de consumir el valioso tiempo de otros compañeros asignados como mentores.
-
-## 💡 Nuestra Propuesta: La idea detrás de OnBoardingHub
-Nuestra visión es construir una plataforma modular y escalable que actúe como un **centro de mando (Hub)** para orquestar toda la entrada de un nuevo trabajador. 
-
-No se trata de un simple portal para subir documentos burocráticos. Es una herramienta técnica que propone un cambio de paradigma real:
-
-* 🛠️ **Entornos Sandbox:** Espacios seguros y simulados donde el nuevo empleado se enfrenta a tareas reales desde el primer día (ej. hacer *Pull Requests* o simulaciones de despliegues).
-* 🛡️ **Riesgo Cero:** Todo ocurre en un entorno controlado que no afecta a los sistemas reales de la empresa.
-* 🚀 **Aprendizaje Activo:** Fomentamos el *Learning by Doing*, acelerando la curva de aprendizaje y la autonomía del desarrollador.
-
----
-
-## 🏗️ Visión de Arquitectura
-Actualmente, el proyecto se encuentra en su fase de diseño. La aplicación que se construirá aquí seguirá un modelo de **Microservicios** aplicando los principios de **Domain-Driven Design (DDD)**. 
-
-Esto garantizará:
-- **Alta escalabilidad** del sistema.
-- **Independencia** entre dominios (gestión de usuarios, simulador sandbox, orquestador de tareas, etc.).
-- Uso de tecnologías modernas como **Docker** para la contenedorización y levantamiento de entornos.
-- Metodologías estructuradas como **Gitflow** para una gestión profesional de las ramas de código.
-
----
-
-## ⏳ Estado del Proyecto
-🚧 **Fase actual:** Diseño, bases arquitectónicas y definición de infraestructura.
-🔜 **Próximos pasos:** Inicio del desarrollo de los microservicios principales para construir el Producto Mínimo Viable (MVP).
-
----
-
-## 👨‍🎓 Sobre este TFG
-
-* 👤 **Autores:** Francisco José Rojas Ramírez & Francisco Redondo Barrera
-* 👨‍🏫 **Tutor:** Juan Antonio Ortega Ramírez
-* 🎓 **Titulación:** Grado en Ingeniería Informática (Tecnologías Informáticas)
-* 🏛️ **Universidad:** Universidad de Sevilla (Escuela Técnica Superior de Ingeniería Informática)
-* 📅 **Curso:** 2025/2026
-
----
-*Desarrollado con pasión para mejorar la cultura de ingeniería.* 💻✨
-
-Tienes razón, me lié. Aquí va el contenido limpio para que lo copies:
-
----
-
-## 🛠️ Guía de Instalación y Puesta en Marcha
-
-### Prerrequisitos
-
-Antes de clonar el proyecto necesitas tener instalado:
-
-- **Node.js v20+** — instálalo con nvm (recomendado)
-- **npm v9+** — viene incluido con Node.js
-- **Docker v24+** — https://docs.docker.com/engine/install/ubuntu/
-- **Git** — `sudo apt install git`
-
-**Instalar Node.js 20 con nvm en Ubuntu:**
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-# Reinicia la terminal y ejecuta:
-nvm install 20 && nvm use 20 && nvm alias default 20
+```
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│  React SPA  │◄──HTTP──►│  Express API │◄──SQL───►│ PostgreSQL  │
+│  (Vite)     │         │ (Prisma ORM) │         │  (Docker)   │
+└─────────────┘         └──────┬───────┘         └─────────────┘
+                               │ Dockerode
+                ┌──────────────┼──────────────┐
+                ▼              ▼              ▼
+          Git Workflow   UML Designer   Code Review ...
+          (containers)   (containers)   (containers)
 ```
 
-**Usar Docker sin sudo en Ubuntu:**
-```bash
-sudo usermod -aG docker $USER && newgrp docker
-```
+| Capa | Tecnología | Propósito |
+|------|-----------|-----------|
+| Frontend | React 18, Vite 5, TanStack Query, React Router 6 | SPA con sistema de rutas protegidas y estado asíncrono |
+| Backend | Express 5, TypeScript, Prisma ORM | API REST modular con JWT y gestión del ciclo de vida de contenedores |
+| Base de datos | PostgreSQL 15 | Persistencia relacional (usuarios, tareas, progreso, sandboxes) |
+| Sandboxes | Docker (Dockerode), ttyd | Contenedores efímeros con terminal web o UI embebida en iframe |
+| Testing | Vitest, Testing Library | Tests unitarios y de componentes |
+
+### Módulos del Backend
+
+La API se organiza en módulos independientes bajo `server/src/modules/`:
+
+`auth` · `users` · `companies` · `boxes` · `sandboxes` · `tasks` · `progress` · `notifications` · `reports` · `admin` · `sandbox-templates`
+
+### Sandboxes Disponibles
+
+| Sandbox | Dificultad | Tipo | Descripción |
+|---------|-----------|------|-------------|
+| Git Workflow | Principiante | Terminal (ttyd) | Práctica de flujo Git: feature branches, commits, push y merge |
+| Timesheet Tracker | Principiante | Web UI | Imputación semanal de horas con envío al responsable |
+| Code Review | Intermedio | Terminal (ttyd) | Revisión de Pull Request: detectar vulnerabilidades de seguridad |
+| UML Designer | Intermedio | Web UI | Editor visual de diagramas de clases con generación de código C# |
 
 ---
 
-### 1. Clonar el repositorio
+## Requisitos Previos
+
+- **Node.js 20+** (recomendado instalar con [nvm](https://github.com/nvm-sh/nvm))
+- **Docker 24+** con permisos de usuario (`sudo usermod -aG docker $USER`)
+- **Git**
+
+## Instalación
+
 ```bash
+# 1. Clonar
 git clone https://github.com/francisrojass/OnBoardingHub.git
 cd OnBoardingHub
-```
 
-### 2. Configurar variables de entorno
-```bash
-cd server
-cp .env.example .env
-```
-Para desarrollo local los valores por defecto del `.env.example` funcionan sin cambios.
+# 2. Variables de entorno
+cp server/.env.example server/.env
 
-### 3. Instalar dependencias
-```bash
-cd server && npm install
-cd ../client && npm install
-```
+# 3. Dependencias
+cd server && npm install && cd ../client && npm install && cd ..
 
-### 4. Levantar la base de datos
-Desde la raíz del proyecto:
-```bash
+# 4. Base de datos
 docker compose up -d
-docker compose ps
-```
-Deberías ver dos containers activos: `onboarding_db` y `onboarding_pgadmin`.
 
-### 5. Ejecutar las migraciones
-```bash
+# 5. Migraciones y generación del cliente Prisma
 cd server
 npx prisma migrate dev
 npx prisma generate
 ```
 
-### 6. Arrancar el proyecto
+## Ejecución
 
-Necesitas tres terminales:
+### Inicio rápido (script)
 
-**Terminal 1 — Base de datos** (si no la levantaste ya):
 ```bash
+./start_env.sh
+```
+
+Abre tres pestañas de terminal con Docker, backend y frontend automáticamente.
+
+### Inicio manual
+
+```bash
+# Terminal 1 – Base de datos
 docker compose up -d
-```
 
-**Terminal 2 — Backend** (puerto 3001):
-```bash
+# Terminal 2 – Backend (puerto 3001)
 cd server && npm run dev
-```
 
-**Terminal 3 — Frontend** (puerto 5173):
-```bash
+# Terminal 3 – Frontend (puerto 5173)
 cd client && npm run dev
 ```
 
-Abre el navegador en **http://localhost:5173**
+Accede a la aplicación en **http://localhost:5173**
 
-### 7. Verificar que todo funciona
-```bash
-curl http://localhost:3001/api/health
+## Variables de Entorno
+
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|-------------------|
+| `DATABASE_URL` | Cadena de conexión PostgreSQL | `postgresql://onboarding:onboarding_pass@localhost:5432/onboarding_hub` |
+| `JWT_SECRET` | Clave de firma para tokens JWT | — (obligatorio) |
+| `JWT_EXPIRES_IN` | Tiempo de expiración del token | `7d` |
+| `PORT` | Puerto del servidor Express | `3001` |
+| `CLIENT_URL` | URL del frontend (CORS) | `http://localhost:5173` |
+| `SANDBOX_PORT_RANGE_START` | Inicio del rango de puertos para sandboxes | `8100` |
+| `SANDBOX_PORT_RANGE_END` | Fin del rango de puertos para sandboxes | `8999` |
+
+## Scripts Disponibles
+
+### Backend (`server/`)
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Inicia el servidor en modo desarrollo con hot-reload |
+| `npm run build` | Compila TypeScript a JavaScript |
+| `npm start` | Ejecuta la build de producción |
+| `npm run prisma:migrate` | Ejecuta migraciones pendientes |
+| `npm run prisma:studio` | Abre Prisma Studio (UI de base de datos) |
+| `npm run prisma:seed` | Carga datos iniciales de ejemplo |
+
+### Frontend (`client/`)
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Inicia Vite en modo desarrollo |
+| `npm run build` | Genera la build de producción |
+| `npm test` | Ejecuta los tests con Vitest |
+| `npm run test:watch` | Tests en modo watch |
+| `npm run typecheck` | Comprobación de tipos sin emitir |
+
+## URLs en Desarrollo
+
+| Servicio | URL |
+|----------|-----|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:3001/api/v1 |
+| Health check | http://localhost:3001/api/health |
+| pgAdmin | http://localhost:5050 |
+
+## Estructura del Proyecto
+
 ```
-Respuesta esperada: `{"status":"ok","timestamp":"..."}`
-
----
-
-### URLs del proyecto
-
-- Frontend → http://localhost:5173
-- Backend API → http://localhost:3001/api/v1
-- Health check → http://localhost:3001/api/health
-- pgAdmin → http://localhost:5050 (email: `admin@onboarding.dev` / pass: `admin`)
-
----
-
-### Problemas frecuentes
-
-**`permission denied` con Docker:**
-```bash
-sudo usermod -aG docker $USER && newgrp docker
+OnBoardingHub/
+├── client/                 # SPA React (Vite)
+│   └── src/
+│       ├── components/     # Componentes reutilizables
+│       ├── pages/          # Vistas principales
+│       ├── context/        # Contexto de autenticación
+│       ├── services/       # Cliente HTTP (Axios)
+│       └── __tests__/      # Tests de componentes
+├── server/                 # API Express
+│   ├── src/
+│   │   ├── modules/        # Módulos de dominio
+│   │   ├── middlewares/    # Auth JWT, error handler
+│   │   ├── config/         # Env y conexión DB
+│   │   └── utils/          # Logger (Winston)
+│   └── prisma/             # Schema, migraciones y seed
+├── shared/                 # Tipos TypeScript compartidos
+├── docker/
+│   └── sandboxes/          # Dockerfiles de cada sandbox
+└── docker-compose.yml      # PostgreSQL + pgAdmin
 ```
 
-**`Can't reach database server` al arrancar el backend:**
-```bash
-docker compose up -d
-```
+## Solución de Problemas
 
-**Errores de migración tras cambiar el schema:**
-```bash
-cd server
-npx prisma migrate dev --name descripcion_del_cambio
-npx prisma generate
-```
+| Problema | Solución |
+|----------|----------|
+| `permission denied` con Docker | `sudo usermod -aG docker $USER && newgrp docker` |
+| `Can't reach database server` | Verificar que Postgres está corriendo: `docker compose up -d` |
+| Puerto de sandbox ocupado | La plataforma reconcilia automáticamente contenedores huérfanos al lanzar |
+| Error de migración | `cd server && npx prisma migrate dev --name fix && npx prisma generate` |
+
+## Autores
+
+- **Francisco José Rojas Ramírez** — desarrollo e implementación
+- **Francisco Redondo Barrera** — desarrollo e implementación
+- **Juan Antonio Ortega Ramírez** — tutor del proyecto
+
+Trabajo de Fin de Grado · Grado en Ingeniería Informática (Tecnologías Informáticas)  
+Universidad de Sevilla — ETSII · Curso 2025/2026
