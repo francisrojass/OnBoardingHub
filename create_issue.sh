@@ -1,7 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Crear labels + 50 issues en GitHub para OnBoardingHub
-# Ejecutar: bash create_issues.sh
+# Crear labels y 50 issues en GitHub para OnBoardingHub
 # =============================================================================
 
 REPO="francisrojass/OnBoardingHub"
@@ -323,5 +322,4 @@ gh issue create -R "$REPO" --title "Add comprehensive onboarding migration" \
 echo ""
 echo "============================================"
 echo " Listo! Todas las issues creadas."
-echo " Verifica: gh issue list -R $REPO --limit 60"
 echo "============================================"
